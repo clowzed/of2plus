@@ -10,17 +10,24 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:of2plus.build", "onCommand:of2plus.genfolders"
+        "onCommand:of2plus.build",
+        "onCommand:of2plus.genfolders",
+        "onCommand:of2plus.activate"
     ],
     "main": "./out/extension.js",
     "contributes": {
-        "commands": [{
+        "commands": [
+            {
                 "command": "of2plus.build",
                 "title": "of2plus build"
             },
             {
                 "command": "of2plus.genfolders",
                 "title": "of2plus generate standart folder structure for project"
+            },
+            {
+                "command": "of2plus.activate",
+                "title": "Activate of2plus"
             }
         ]
     },
@@ -46,6 +53,7 @@
         "typescript": "^4.5.5"
     },
     "dependencies": {
-        "child_process": "^1.0.2"
+        "child_process": "^1.0.2",
+        "of2plus": "file:"
     }
 }
