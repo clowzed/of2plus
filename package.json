@@ -10,8 +10,6 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:of2plus.build",
-        "onCommand:of2plus.genfolders",
         "onCommand:of2plus.activate"
     ],
     "main": "./out/extension.js",
@@ -28,6 +26,14 @@
             {
                 "command": "of2plus.activate",
                 "title": "Activate of2plus"
+            },
+            {
+                "command": "of2plus.downloadOF",
+                "title": "of2plus download OF prebuilds"
+            },
+            {
+                "command": "of2plus.loadbashrc",
+                "title": "of2plus export env vars"
             }
         ]
     },
@@ -43,6 +49,7 @@
         "@types/glob": "^7.2.0",
         "@types/mocha": "^9.1.0",
         "@types/node": "14.x",
+        "@types/targz": "^1.0.1",
         "@types/vscode": "^1.65.0",
         "@typescript-eslint/eslint-plugin": "^5.12.1",
         "@typescript-eslint/parser": "^5.12.1",
@@ -53,7 +60,12 @@
         "typescript": "^4.5.5"
     },
     "dependencies": {
+        "@types/fs-extra": "^9.0.13",
         "child_process": "^1.0.2",
-        "of2plus": "file:"
+        "dns": "^0.2.2",
+        "fs-extra": "^10.0.1",
+        "of2plus": "file:",
+        "pathlib-js": "^1.3.0",
+        "targz": "^1.0.1"
     }
 }

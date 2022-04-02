@@ -31,7 +31,7 @@ sudo apt-get -y install openfoam9
 Press `Ctrl` + `Shift` + `P` and type `of2plus`
 - It can generate nesesarry folders for the project
 - In status bar you can find `Build with Wmake` which will build your project
-- Open terminal ang go to `OUTPUt`. There you will find `of2plus stderr` for errors and `of2plus stdout` for other messages.
+- Open terminal ang go to `OUTPUT`. There you will find `of2plus stderr` for errors and `of2plus stdout` for other messages.
 
 
 ## Roadmap
