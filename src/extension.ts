@@ -13,11 +13,7 @@ import { spawn } from 'child_process';
 //TODO Reduse magic strings
 //TODO Server api with choice of platform (now - only one platform)
 
-
-
 const PREBUILDS_SERVER:string = "https://filesamples.com/samples/document/docx/sample4.docx";
-
-
 
 //* Status: Finished
 function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext) 
@@ -31,21 +27,29 @@ function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext)
 	context.subscriptions.push(baritem);
 }
 
-
-
 //* Status: Finished
 function of2PlusInitializeASourceBarButton(context: vscode.ExtensionContext) 
 {
 	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 	
 	baritem.command = "of2plus.loadbashrc";
-	baritem.text    = "Activate OF environment";
+	baritem.text    = "Activate environment";
 	
 	baritem.show();
 	context.subscriptions.push(baritem);
 }
 
-
+//* Status: Finished
+function of2PlusInitializeAIntellisenseBarButton(context: vscode.ExtensionContext) 
+{
+	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+	
+	baritem.command = "of2plus.activateIntellisense";
+	baritem.text    = "Activate Intellisense";
+	
+	baritem.show();
+	context.subscriptions.push(baritem);
+}
 
 //* Status: Finished
 function of2PlusGenerateStandartFoldersAndFiles()
@@ -59,15 +63,16 @@ function of2PlusGenerateStandartFoldersAndFiles()
 	let foldersNames = ["applications", "bin", 
 						 "doc", "etc", 
 						 "lib", "src", 
-						 "tutorials", "wmake", 
+						 "tutorials",  
 						 "applications/bin", 
 						 "applications/solvers",
 						 "applications/test",
 						 "applications/utilities",
 						 "doc/Doxygen",
-						 "wmake/Make"];
+						 "wmake/Make",
+						 ".vscode"];
 		
-	let fileNames = ["wmake/Make/files", "wmake/Make/options"];
+	let fileNames = ["Make/files", "Make/options", ".vscode/settings.json"];
 		
 		
 	//? This section generates folders
@@ -101,10 +106,49 @@ function of2PlusGenerateStandartFoldersAndFiles()
 }
 
 
+//* Status: Finished
+//! Not tested
+function intellisenseActivation()
+{
+	
+	vscode.commands.executeCommand('of2plus.loadbashrc');
+	
+	if (process.env.FOAM_INST_DIR === undefined) 
+	{
+		helps.error("Failed to activate intellisense. Run `of2plus: Activate Extension` or `of2plus: Download prebuilds.`");
+		return;
+	}
+	
+	let settingsPath = helps.workspaceFolder() + "/.vscode/settings.json";
+	
+	
+	if (!fs.existsSync(settingsPath.toString()) || fs.readFileSync(settingsPath).length === 0)
+	{
+		helps.info("Creating settings.json");
+		
+		fs.writeFileSync(settingsPath, '{}');
+		
+		helps.info("File was successfully created!");
+	}	
+	
+	let config = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || {};
+
+	helps.info(JSON.stringify(config));
+	
+	if (config['C_Cpp.defaul.includePath'] === undefined)
+	{
+		config['C_Cpp.default.includePath'] = [];
+	}
+
+	config['C_Cpp.default.includePath'].push(process.env.FOAM_INST_DIR);
+	
+	fs.writeFileSync(settingsPath, JSON.stringify(config));
+	
+}
 
 
-
-//! Status: Not working
+//* Status: Finised
+//! No tests!
 // TODO Download libraries and executables
 // TODO Extract to of2plus-important
 // TODO Generate of2plus_bashrc
@@ -116,12 +160,11 @@ function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 		return;
 	}
 	
-	let extFolder = new Path(helps.homeDirectory() + "/of2plus-important");
+	let extFolder               = new Path(helps.homeDirectory() + "/of2plus-important");
 	let compressedPrebuildsFile = new Path(extFolder + "/of2plus_downloaded_prebuilds.tar.gz");
-	let destination = new Path(extFolder + "/OF");
+	let destination             = new Path(extFolder + "/OF");
 	
-	helps.info("Download was started...");
-
+	helps.info("Prebuilds downloading  was started...");
 
 	let anyError = false;
 	
@@ -139,7 +182,7 @@ function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 	})
 	.on("error", (err) => 
 	{
-        helps.error("Error occured while downloading prebuilds! Check output");
+        helps.error("Error occured while downloading prebuilds! Check output for more information");
         helps.outputChannel("of2plus stderr").append(err.message);
         anyError = true;
 	});
@@ -165,8 +208,6 @@ function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 			}
 		});	
 	}
-	
-
 };
 
 
@@ -238,8 +279,9 @@ export function activate(context: vscode.ExtensionContext)
 	
 	
 	
-	let foldersInit = vscode.commands.registerCommand("of2plus.genfolders", of2PlusGenerateStandartFoldersAndFiles);
-	let foamLoad    = vscode.commands.registerCommand("of2plus.downloadOF", of2plusDownloadPrebuilds);
+	let foldersInit  = vscode.commands.registerCommand("of2plus.genfolders", of2PlusGenerateStandartFoldersAndFiles);
+	let foamLoad     = vscode.commands.registerCommand("of2plus.downloadOF", of2plusDownloadPrebuilds);
+	let intellisense = vscode.commands.registerCommand("of2plus.activateIntellisense", intellisenseActivation);
 		
 	
 	context.subscriptions.push(disposable);
@@ -247,6 +289,7 @@ export function activate(context: vscode.ExtensionContext)
 	context.subscriptions.push(activation);
 	context.subscriptions.push(foamLoad);
 	context.subscriptions.push(loadBashrc);
+	context.subscriptions.push(intellisense);
 }
 
 

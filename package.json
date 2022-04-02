@@ -14,26 +14,29 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
-        "commands": [
-            {
+        "commands": [{
                 "command": "of2plus.build",
                 "title": "of2plus build"
             },
             {
                 "command": "of2plus.genfolders",
-                "title": "of2plus generate standart folder structure for project"
+                "title": "of2plus: Generate standart folder structure."
             },
             {
                 "command": "of2plus.activate",
-                "title": "Activate of2plus"
+                "title": "of2plus: Activate extension."
             },
             {
                 "command": "of2plus.downloadOF",
-                "title": "of2plus download OF prebuilds"
+                "title": "of2plus: Download openfoam prebuilds."
             },
             {
                 "command": "of2plus.loadbashrc",
-                "title": "of2plus export env vars"
+                "title": "of2plus: Activate Environment"
+            },
+            {
+                "command": "of2plus.activateIntellisense",
+                "title": "of2plus: Activate intellisense for openfoam headers."
             }
         ]
     },
