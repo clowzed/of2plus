@@ -1,41 +1,33 @@
-# Of2plus-devkit
+<div align = "center">
+<img style="border-radius: 50%; width: 200px; height: 200px;" src="https://i.ibb.co/4fZG2kV/download.jpg" alt="download">
+</div>
 
+## About
+This extensions helps to organize work with writing openfoam modules in `c++`
 
-## Prerequrites
-- openfoam
-- wmake
+## Opportunities
 
-#### Arch installtion
-Install `aurman` first and then
-```bash
-aurman -S openfoam-org
-```
+<img style = "border: 1px solid white" src="https://i.ibb.co/856pB7V/Screenshot-2022-04-03-154338.png" alt="">
+<br>
+<img style = "border: 1px solid white" src="https://i.ibb.co/tHZhbfc/Extension-Development-Host-aa-Visual-Studio-Code-4-3-2022-3-47-27-PM-2.png" alt=""/>
 
-### Ubuntu installation
-```bash
-sudo sh -c "wget -O - https://dl.openfoam.org/gpg.key | apt-key add -"
-sudo add-apt-repository http://dl.openfoam.org/ubuntu
-sudo apt-get update
-sudo apt-get -y install openfoam9
+- `1)` Downloads prebuilds for many platforms (now only for x_86_64-pc-linux-unknown)
+- `2)` Generate standart folder structure for the project
+- `3)` Activate Environment
+- `4)` Adds build button for wmake
+- `5)` Adds intellisense for openfoam headers
 
-```
-### Dev run
-
-1. Open this folder
-2. run `npm install`
-3. run `npm run compile`
-4. Press `F5` this will open new window.
-5. `Ctrl` + `Shift` + `P` and type `Activate of2plus`
-6. Now explore commands with typing `of2plus`
-### Commands
-Press `Ctrl` + `Shift` + `P` and type `of2plus`
-- It can generate nesesarry folders for the project
-- In status bar you can find `Build with Wmake` which will build your project
-- Open terminal ang go to `OUTPUT`. There you will find `of2plus stderr` for errors and `of2plus stdout` for other messages.
-
+## Usage
+- `1)` Press `ctrl` + `shift` + `P`
+- `2)` Type `of2plus` for finding extension commands.
+- `3)` Search for 'Download prebuilds` and wait untill operation is completed.
+- `4)` After installation press search for `Activate environment`. Press `enter`. You will need to press this button any time you reloads the window.
+- `5)` Write some code and find button  `Build with wmake`
 
 ## Roadmap
-- [ ✔️] - Folders generation
-- [ ✔️] - Ui uttons and output redirecting
-- [ 🔴] - Add Intellicense for openfoam headers
-- [ 🔴] - Add Fields printing in debug mode
+- [✔️] - Generate standart folder structure
+- [✔️] - Add ui buttons
+- [✔️] - Add intellisense for openfoam headers
+- [✔️] - Build openfoam and host it
+- [❌] - Add spesial server for hosting prebuilds with api
+- [❌] - Show fields on breakpoints

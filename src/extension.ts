@@ -10,10 +10,10 @@ import { info } from 'console';
 import { report } from 'process';
 import { spawn } from 'child_process';
 
-//TODO Reduse magic strings
 //TODO Server api with choice of platform (now - only one platform)
 
-const PREBUILDS_SERVER:string = "https://filesamples.com/samples/document/docx/sample4.docx";
+//? This is temporary
+const PREBUILDS_SERVER:string = "https://s26.filetransfer.io/storage/download/51GzI2l4VnJN";
 
 //* Status: Finished
 function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext) 
@@ -69,10 +69,10 @@ function of2PlusGenerateStandartFoldersAndFiles()
 						 "applications/test",
 						 "applications/utilities",
 						 "doc/Doxygen",
-						 "wmake/Make",
+						 "Make",
 						 ".vscode"];
 		
-	let fileNames = ["Make/files", "Make/options", ".vscode/settings.json"];
+	let fileNames = ["Make/files", "Make/options", ".vscode/c_cpp_properties.json"];
 		
 		
 	//? This section generates folders
@@ -110,7 +110,6 @@ function of2PlusGenerateStandartFoldersAndFiles()
 //! Not tested
 function intellisenseActivation()
 {
-	
 	vscode.commands.executeCommand('of2plus.loadbashrc');
 	
 	if (process.env.FOAM_INST_DIR === undefined) 
@@ -119,12 +118,12 @@ function intellisenseActivation()
 		return;
 	}
 	
-	let settingsPath = helps.workspaceFolder() + "/.vscode/settings.json";
+	let settingsPath = helps.workspaceFolder() + "/.vscode/c_cpp_properties.json";
 	
 	
 	if (!fs.existsSync(settingsPath.toString()) || fs.readFileSync(settingsPath).length === 0)
 	{
-		helps.info("Creating settings.json");
+		helps.info("Creating c_cpp_properties.json");
 		
 		fs.writeFileSync(settingsPath, '{}');
 		
@@ -132,15 +131,14 @@ function intellisenseActivation()
 	}	
 	
 	let config = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || {};
-
-	helps.info(JSON.stringify(config));
 	
-	if (config['C_Cpp.defaul.includePath'] === undefined)
+	if (config['configurations'] === undefined)
 	{
-		config['C_Cpp.default.includePath'] = [];
+		config['configurations'] = [];
 	}
 
-	config['C_Cpp.default.includePath'].push(process.env.FOAM_INST_DIR);
+	config['configurations'].push({'includePath' : ['${FOAM_INST_DIR}/**'], 'name' : 'linux'});
+	config['version'] = 4;
 	
 	fs.writeFileSync(settingsPath, JSON.stringify(config));
 	
@@ -149,9 +147,6 @@ function intellisenseActivation()
 
 //* Status: Finised
 //! No tests!
-// TODO Download libraries and executables
-// TODO Extract to of2plus-important
-// TODO Generate of2plus_bashrc
 function of2plusDownloadPrebuilds(context:vscode.ExtensionContext) 
 {
 	if (!helps.isConnectedToInternet())
@@ -216,6 +211,7 @@ export function activate(context: vscode.ExtensionContext)
 	//? Adding bar buttons
 	of2PlusInitializeASourceBarButton(context);
 	of2PlusInitializeBuildBarButton(context);
+	of2PlusInitializeAIntellisenseBarButton(context);
 
 	
 	//? Creating home dir for files
@@ -248,8 +244,8 @@ export function activate(context: vscode.ExtensionContext)
 	{		
 		if (!fs.existsSync(bsource.toString()))
 		{
-			helps.error("Failed to activate environment! Reason: of2plus_bashrc file does not exists!");
-			helps.info("Try running `of2plus download OF prebuilds`");
+			helps.error("Failed to activate environment!");
+			helps.info("Try running `of2plus: Download openfoam prebuilds.`");
 		}
 		else
 		{
