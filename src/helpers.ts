@@ -1,6 +1,8 @@
 import * as dns     from 'dns';
+import * as http from 'http';
 import * as vscode  from 'vscode';
 
+import fetch from 'node-fetch';
 import { spawn }    from 'child_process';
 
 let outputChannels: Map<string, vscode.OutputChannel> = new Map();
@@ -70,4 +72,19 @@ export function error(msg: string)
 export function homeDirectory()
 {
 	return process.env.HOME || process.env.USERPROFILE;
+}
+
+export async function json_from(url:string)
+{   
+	return await fetch(url).then((res: { json: () => any; }) => res.json());
+}
+
+export async function quickpick(lables:[string])
+{
+	return await vscode.window.showQuickPick(lables);
+}
+
+export async function prebuildExists(url:string)
+{
+	return (await fetch(url).then((res: { json: () => any; }) => res.json()))['exists'] === 'true';
 }

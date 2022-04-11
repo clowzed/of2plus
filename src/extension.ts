@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as helps from "./helpers";
+import * as http from 'http';
 import * as https from 'https';
 import * as path from 'path';
 import * as targz from 'targz';
@@ -14,6 +15,10 @@ import { spawn } from 'child_process';
 
 //? This is temporary
 const PREBUILDS_SERVER:string = "https://s26.filetransfer.io/storage/download/51GzI2l4VnJN";
+
+const ESTDOUT = "of2plus stdout";
+const ESTDERR = "of2plus stderr";
+
 
 //* Status: Finished
 function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext) 
@@ -147,7 +152,7 @@ function intellisenseActivation()
 
 //* Status: Finised
 //! No tests!
-function of2plusDownloadPrebuilds(context:vscode.ExtensionContext) 
+async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext) 
 {
 	if (!helps.isConnectedToInternet())
 	{
@@ -155,16 +160,43 @@ function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 		return;
 	}
 	
-	let extFolder               = new Path(helps.homeDirectory() + "/of2plus-important");
-	let compressedPrebuildsFile = new Path(extFolder + "/of2plus_downloaded_prebuilds.tar.gz");
-	let destination             = new Path(extFolder + "/OF");
 	
-	helps.info("Prebuilds downloading  was started...");
+	
+	let versions:any = await helps.json_from('http://127.0.0.1:5002/versions');
+	versions = versions['versions'];
+	
+	let platforms:any = await helps.json_from('http://127.0.0.1:5002/platforms')
+	platforms = platforms['platforms'];
+	
+	
+	
+	let version = await helps.quickpick(versions);
+	let platform = await helps.quickpick(platforms);
+	
+	
+	let extFolder               = new Path(helps.homeDirectory() + "/of2plus-important");
+	let compressedPrebuildsFile = new Path(extFolder + `/${version}--()--${platform}.tar.gz`);
+	let destination             = compressedPrebuildsFile.withSuffix("");
+	
+	if (!helps.prebuildExists(`http://127.0.0.1:5002/exists?version=${version}&platform=${platform}`))
+	{ 
+		helps.error("Prebuild of such version and platform does not exists!"); 
+		return; 
+	}
+	else
+	{
+		helps.info("This prebuild exists!");
+	}
+	
+	
+	
+	helps.info("Prebuilds downloading was started...");
 
 	let anyError = false;
 	
 	//? Downloading 
-	https.get(PREBUILDS_SERVER, (res) => 
+	https.get(`http://127.0.0.1:5002/download?version=${version}&platform=${platform}`, 
+	(res) => 
 	{
         const file = fs.createWriteStream(compressedPrebuildsFile.toString());
 
@@ -185,23 +217,8 @@ function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 	//? Extracting file (.tar.gz) if no error occured while downloading
 	if (!anyError)
 	{
-		targz.decompress(
-		{
-			src  : compressedPrebuildsFile.toString(),
-			dest : destination.toString(),
-		}, 
-		(err) => 
-		{
-			if (err) 
-			{
-				helps.error("Error occured while decompressing prebuilds. Check output for information");
-				helps.outputChannel('of2plus stderr').append(err.toString());
-			} 
-			else 
-			{
-				helps.info("Prebuilds were succesfully decompressed!");
-			}
-		});	
+		helps.spawnRedirected(`tar -xf ${compressedPrebuildsFile.toString()} --directory ${destination.toString()}`,
+				helps.outputChannel("of2plus stderr"), helps.outputChannel("of2plus stdout"));
 	}
 };
 
