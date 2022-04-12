@@ -7,9 +7,9 @@ import * as targz from 'targz';
 import * as vscode from 'vscode';
 
 import Path from 'pathlib-js';
-import { info } from 'console';
 import { report } from 'process';
 import { spawn } from 'child_process';
+import { stringify } from 'querystring';
 
 //TODO Server api with choice of platform (now - only one platform)
 
@@ -208,6 +208,21 @@ async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 		helps.spawnRedirected(`tar -xf ${compressedPrebuildsFile.toString()} --directory ${destination.toString()}`,
 				helps.outputChannel("of2plus stderr"), helps.outputChannel("of2plus stdout"));
 	}
+	
+
+	let config = JSON.parse(fs.readFileSync(extFolder.toString() + "/installed.json", 'utf8')) || {};
+	
+	if (config['installed'] === undefined)
+	{
+		config['installed'] = [];
+	}
+	
+	config['installed'].push({'version': version, 'platform': platform, 'path' : destination, 'bashrc' : destination + `OpenFOAM-v${version}/etc/bashrc`});
+	
+	fs.writeFileSync(extFolder.toString() + "/installed.json", JSON.stringify(config));
+
+	
+
 };
 
 
@@ -244,21 +259,37 @@ export function activate(context: vscode.ExtensionContext)
 	//? Loads environment
 	//* Status: Working
 	//! Using . command so it is not accessable through windows
-	let loadBashrc  = vscode.commands.registerCommand("of2plus.loadbashrc", () => 
+	let loadBashrc  = vscode.commands.registerCommand("of2plus.loadbashrc", async () => 
 	{		
-		let installed_versions = extFolder.readDirSync()
-										  .filter(dir => dir.isDirectory())
-										  .map(dir => [dir, dir.dirname])
-										  .filter(dir => dir[1].toString().includes("--()--"));
-										
-		info(installed_versions.toString());
+		let config = JSON.parse(fs.readFileSync(extFolder.toString() + "/installed.json", 'utf8')) || {};
+		
+		if (config === {}) 
+		{
+			helps.error("Failed to activate environment!");
+			helps.info("Try running `of2plus: Download openfoam prebuilds.`");
+		}
 
-		let bsource = new Path(extFolder + "/of2plus-prebuilds/etc/bashrc");
+		let versions = config['installed'].map((installation:{version:string})   => installation['version']);
+		let platforms = config['installed'].map((installation:{platform:string}) => installation['platform']);
+		
+		
+		let version = await helps.quickpick(versions, "Choose version");
+		let platform = await helps.quickpick(platforms, "Choose platform");
+		
+		if (config['installation'].filter((inst:{version:string, platform: string}) => inst['version'] === version && inst['platform'] === platform).length === 0)
+		{
+			helps.info("Such installation was not found");
+			return;
+		}
+		
+		
+		
+		let bsource = config['installation'].filter((inst:{version:string, platform: string}) => inst['version'] === version && inst['platform'] === platform)[0]['bashrc'];
 
 		if (!fs.existsSync(bsource.toString()))
 		{
 			helps.error("Failed to activate environment!");
-			helps.info("Try running `of2plus: Download openfoam prebuilds.`");
+			helps.info("Bashrc file was not found");
 		}
 		else
 		{
