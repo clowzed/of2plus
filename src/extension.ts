@@ -11,14 +11,8 @@ import { report } from 'process';
 import { spawn } from 'child_process';
 import { stringify } from 'querystring';
 
-//TODO Server api with choice of platform (now - only one platform)
-
-//? This is temporary
-const PREBUILDS_SERVER:string = "https://s26.filetransfer.io/storage/download/51GzI2l4VnJN";
-
 const ESTDOUT = "of2plus stdout";
 const ESTDERR = "of2plus stderr";
-
 
 //* Status: Finished
 function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext) 
@@ -113,25 +107,19 @@ function of2PlusGenerateStandartFoldersAndFiles()
 
 //* Status: Finished
 //! Not tested
-function intellisenseActivation()
+async function intellisenseActivation()
 {
-	vscode.commands.executeCommand('of2plus.loadbashrc');
-	
-	if (process.env.FOAM_INST_DIR === undefined) 
-	{
-		helps.error("Failed to activate intellisense. Run `of2plus: Activate Extension` or `of2plus: Download prebuilds.`");
-		return;
-	}
+	await vscode.commands.executeCommand('of2plus.loadbashrc');
 	
 	let settingsPath = helps.workspaceFolder() + "/.vscode/c_cpp_properties.json";
 	
-	vscode.commands.executeCommand('C_Cpp.ConfigurationEditJSON');
+	await vscode.commands.executeCommand('C_Cpp.ConfigurationEditJSON');
 	
-	setTimeout(() => vscode.commands.executeCommand('workbench.action.closeActiveEditor'), 300);
+	//setTimeout(() => vscode.commands.executeCommand('workbench.action.closeActiveEditor'), 1000);
 	
 	let config = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || {};
 
-	config['configurations']['includePath'].push('${FOAM_INST_DIR}/**');
+	config['configurations'][0]['includePath'].push('${HOME}/of2plus-important/**');
 	
 	fs.writeFileSync(settingsPath, JSON.stringify(config));
 	
@@ -166,16 +154,24 @@ async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 	let compressedPrebuildsFile = new Path(extFolder + `/${version}--()--${platform}.tar.gz`);
 	let destination             = compressedPrebuildsFile.withSuffix("");
 	
+	if (!fs.existsSync(extFolder.toString() + "/installed.json")) {fs.writeFileSync(extFolder.toString() + "/installed.json", "{}");}
+
+	let config_ = JSON.parse(fs.readFileSync(extFolder.toString() + "/installed.json", 'utf8')) || {};
+	
+	if (config_ !== {} && config_['installed'] !== undefined)
+	{	
+		if (config_['installed'].filter((inst: {version:string, platform:string}) => inst['platform'] == platform && inst['version'] == version).length !== 0)
+		{
+			helps.info("You have already downloaded this prebuild!");
+			return;
+		}
+}
+
 	if (!helps.prebuildExists(`http://127.0.0.1:5002/exists?version=${version}&platform=${platform}`))
 	{ 
 		helps.error("Prebuild of such version and platform does not exists!"); 
 		return; 
 	}
-	else
-	{
-		helps.info("This prebuild exists!");
-	}
-	
 	
 	
 	helps.info("Prebuilds downloading was started...");
@@ -205,12 +201,11 @@ async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 	//? Extracting file (.tar.gz) if no error occured while downloading
 	if (!anyError)
 	{
-		helps.spawnRedirected(`tar -xf ${compressedPrebuildsFile.toString()} --directory ${destination.toString()}`,
+		helps.spawnRedirected(`cd ${extFolder.toString()} && tar -xf ${compressedPrebuildsFile.toString()}`,
 				helps.outputChannel("of2plus stderr"), helps.outputChannel("of2plus stdout"));
 	}
 	
 
-	if (!fs.existsSync(extFolder.toString() + "/installed.json")) {fs.writeFileSync(extFolder.toString() + "/installed.json", "{}");}
 	let config = JSON.parse(fs.readFileSync(extFolder.toString() + "/installed.json", 'utf8')) || {};
 	
 	if (config['installed'] === undefined)
@@ -218,7 +213,7 @@ async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 		config['installed'] = [];
 	}
 	
-	config['installed'].push({'version': version, 'platform': platform, 'path' : destination, 'bashrc' : destination + `OpenFOAM-v${version}/etc/bashrc`});
+	config['installed'].push({'version': version, 'platform': platform, 'path' : destination.toString(), 'bashrc' : destination + `/OpenFOAM-v${version}/etc/bashrc`});
 	
 	fs.writeFileSync(extFolder.toString() + "/installed.json", JSON.stringify(config));
 
@@ -277,7 +272,7 @@ export function activate(context: vscode.ExtensionContext)
 		let version = await helps.quickpick(versions, "Choose version");
 		let platform = await helps.quickpick(platforms, "Choose platform");
 		
-		if (config['installation'].filter((inst:{version:string, platform: string}) => inst['version'] === version && inst['platform'] === platform).length === 0)
+		if (config['installed'].filter((inst:{version:string, platform: string}) => inst['version'] === version && inst['platform'] === platform).length === 0)
 		{
 			helps.info("Such installation was not found");
 			return;
@@ -285,8 +280,8 @@ export function activate(context: vscode.ExtensionContext)
 		
 		
 		
-		let bsource = config['installation'].filter((inst:{version:string, platform: string}) => inst['version'] === version && inst['platform'] === platform)[0]['bashrc'];
-
+		let bsource = config['installed'].filter((inst:{version:string, platform: string}) => inst['version'] === version && inst['platform'] === platform)[0]['bashrc'];
+		helps.info(bsource.toString());
 		if (!fs.existsSync(bsource.toString()))
 		{
 			helps.error("Failed to activate environment!");
