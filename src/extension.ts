@@ -286,6 +286,7 @@ export function activate(context: vscode.ExtensionContext)
 		
 		
 		let bsource = config['installation'].filter((inst:{version:string, platform: string}) => inst['version'] === version && inst['platform'] === platform)[0]['bashrc'];
+		
 
 		if (!fs.existsSync(bsource.toString()))
 		{
