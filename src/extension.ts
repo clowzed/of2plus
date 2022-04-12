@@ -210,6 +210,7 @@ async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 	}
 	
 
+	if (!fs.existsSync(extFolder.toString() + "/installed.json")) {fs.writeFileSync(extFolder.toString() + "/installed.json", "{}");}
 	let config = JSON.parse(fs.readFileSync(extFolder.toString() + "/installed.json", 'utf8')) || {};
 	
 	if (config['installed'] === undefined)
