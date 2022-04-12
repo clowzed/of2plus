@@ -4,6 +4,7 @@ import * as vscode  from 'vscode';
 
 import fetch from 'node-fetch';
 import { spawn }    from 'child_process';
+import { title } from 'process';
 
 let outputChannels: Map<string, vscode.OutputChannel> = new Map();
 
@@ -79,9 +80,9 @@ export async function json_from(url:string)
 	return await fetch(url).then((res: { json: () => any; }) => res.json());
 }
 
-export async function quickpick(lables:[string])
+export async function quickpick(lables:[string], title:string)
 {
-	return await vscode.window.showQuickPick(lables);
+	return await vscode.window.showQuickPick(lables, {title: title});
 }
 
 export async function prebuildExists(url:string)

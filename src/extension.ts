@@ -125,25 +125,13 @@ function intellisenseActivation()
 	
 	let settingsPath = helps.workspaceFolder() + "/.vscode/c_cpp_properties.json";
 	
+	vscode.commands.executeCommand('C_Cpp.ConfigurationEditJSON');
 	
-	if (!fs.existsSync(settingsPath.toString()) || fs.readFileSync(settingsPath).length === 0)
-	{
-		helps.info("Creating c_cpp_properties.json");
-		
-		fs.writeFileSync(settingsPath, '{}');
-		
-		helps.info("File was successfully created!");
-	}	
+	setTimeout(() => vscode.commands.executeCommand('workbench.action.closeActiveEditor'), 300);
 	
 	let config = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || {};
-	
-	if (config['configurations'] === undefined)
-	{
-		config['configurations'] = [];
-	}
 
-	config['configurations'].push({'includePath' : ['${FOAM_INST_DIR}/**'], 'name' : 'linux'});
-	config['version'] = 4;
+	config['configurations']['includePath'].push('${FOAM_INST_DIR}/**');
 	
 	fs.writeFileSync(settingsPath, JSON.stringify(config));
 	
@@ -165,13 +153,13 @@ async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 	let versions:any = await helps.json_from('http://127.0.0.1:5002/versions');
 	versions = versions['versions'];
 	
-	let platforms:any = await helps.json_from('http://127.0.0.1:5002/platforms')
+	let platforms:any = await helps.json_from('http://127.0.0.1:5002/platforms');
 	platforms = platforms['platforms'];
 	
 	
 	
-	let version = await helps.quickpick(versions);
-	let platform = await helps.quickpick(platforms);
+	let version = await helps.quickpick(versions, "Choose version");
+	let platform = await helps.quickpick(platforms, "Choose platform");
 	
 	
 	let extFolder               = new Path(helps.homeDirectory() + "/of2plus-important");
@@ -195,7 +183,7 @@ async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 	let anyError = false;
 	
 	//? Downloading 
-	https.get(`http://127.0.0.1:5002/download?version=${version}&platform=${platform}`, 
+	http.get(`http://127.0.0.1:5002/download?version=${version}&platform=${platform}`, 
 	(res) => 
 	{
         const file = fs.createWriteStream(compressedPrebuildsFile.toString());
@@ -235,7 +223,6 @@ export function activate(context: vscode.ExtensionContext)
 	let extFolder = new Path(helps.homeDirectory() + "/of2plus-important");
 	if (!extFolder.existsSync()) { extFolder.makeDirSync();}
 	
-	let bsource = new Path(extFolder + "/of2plus-prebuilds/etc/bashrc");
 
 	
 	//? Simple activation command
@@ -259,6 +246,15 @@ export function activate(context: vscode.ExtensionContext)
 	//! Using . command so it is not accessable through windows
 	let loadBashrc  = vscode.commands.registerCommand("of2plus.loadbashrc", () => 
 	{		
+		let installed_versions = extFolder.readDirSync()
+										  .filter(dir => dir.isDirectory())
+										  .map(dir => [dir, dir.dirname])
+										  .filter(dir => dir[1].toString().includes("--()--"));
+										
+		info(installed_versions.toString());
+
+		let bsource = new Path(extFolder + "/of2plus-prebuilds/etc/bashrc");
+
 		if (!fs.existsSync(bsource.toString()))
 		{
 			helps.error("Failed to activate environment!");
