@@ -16,9 +16,7 @@ const ESTDERR = "of2plus stderr";
 let extFolder          = new Path(helps.homeDirectory() + "/of2plus-important");
 let installedConfig    = new Path(extFolder.toString()  + "/installed.json");
 
-
-
-let configManager = new Manager(installedConfig);
+let configManager      = new Manager(installedConfig);
 
 
 // * Here we define functions which add buttons to status bar
@@ -60,12 +58,6 @@ function of2PlusInitializeAIntellisenseBarButton(context: vscode.ExtensionContex
 	baritem.show();
 	context.subscriptions.push(baritem);
 }
-
-// * End
-
-
-
-
 
 
 //* Status: Finished
@@ -185,7 +177,7 @@ async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 		return;
 	}
 	
-	let platform      = await helps.quickpick(platforms, "Choose platform") || "";
+	let platform  = await helps.quickpick(platforms, "Choose platform") || "";
 
 	
 	
@@ -194,8 +186,6 @@ async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 	let destination             = compressedPrebuildsFile.withSuffix("");
 
 
-	let installationConfig = JSON.parse(fs.readFileSync(installedConfig.toString(), 'utf8')) || {};
-	
 	if (configManager.isInstalled(version, platform))
 	{
 		helps.info("You have already downloaded this prebuild!");
@@ -240,24 +230,23 @@ async function of2plusDownloadPrebuilds(context:vscode.ExtensionContext)
 	
 	
 	//? Extracting file (.tar.gz) if no error occured while downloading
-	//! Not working
-	//* Consider using targz module
 	if (!anyError)
 	{
-		helps.spawnRedirected(`cd ${extFolder.toString()} && tar -xf ${compressedPrebuildsFile.toString()}`,
-				helps.outputChannel(ESTDERR), helps.outputChannel(ESTDOUT));
+		targz.decompress({
+							src: compressedPrebuildsFile.toString(),
+							dest: destination.toString(),
+						 },
+		(err) => {
+			helps.error(err?.toString() || "");
+			anyError = true;
+		}
+		);
 	}
-	else
+	
+	if (!anyError)
 	{
-		return;
+		configManager.install(version, platform, destination, new Path(destination + `/OpenFOAM-v${version}/etc/bashrc`));	
 	}
-	
-
-	configManager.install(version, platform, destination, new Path(destination + `/OpenFOAM-v${version}/etc/bashrc`));
-	
-	fs.writeFileSync(installedConfig.toString(), JSON.stringify(installationConfig));
-
-	
 
 };
 
@@ -299,9 +288,7 @@ export function activate(context: vscode.ExtensionContext)
 	//! Status: Failed! Consider using other source algorithm
 	let loadBashrc  = vscode.commands.registerCommand("of2plus.loadbashrc", async () => 
 	{	
-	
-	
-	
+
 		let config = JSON.parse(fs.readFileSync(installedConfig.toString(), 'utf8')) || {};
 		
 		if (config === {}) 

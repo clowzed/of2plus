@@ -1,8 +1,6 @@
 import * as fs from 'fs';
-import * as path from 'path';
 
 import Path from 'pathlib-js';
-import { threadId } from 'worker_threads';
 
 export class Manager
 {
