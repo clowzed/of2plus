@@ -4,7 +4,7 @@ import * as http from 'http';
 import * as path from 'path';
 import * as targz from 'targz';
 import * as vscode from 'vscode';
-import { Manager } from './confman';
+import { ConfigurationManager, Build } from './config-manager';
 import Path from 'pathlib-js';
 import * as sudo from 'sudo-prompt';
 
