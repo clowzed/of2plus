@@ -30,28 +30,6 @@ export function isConnectedToInternet() {
 export async function spawnRedirected(command: string, stderr: vscode.OutputChannel, stdout: vscode.OutputChannel) {
 	let childProcess = await execShell(command);
 	stdout.append(childProcess);
-	/*
-	, (error:any, stdout_:any, stderr_:any) => {
-		   if (error) {
-			 stderr.append(error.message);
-			 return;
-		   }
-		 
-		   if (stderr) {
-			 stderr.append(stderr_);
-			 return;
-		   }
-		 
-		   stdout.append(stdout_);
-		 });
-	/*
-	childProcess.stderr?.on("data", (data) => stderr.append(data.toString()));
-	childProcess.stdout?.on("data", (data) => stdout.append(data.toString()));
-	childProcess.on("message", (data) => stdout.append(data.toString()));
-	childProcess.on("exit", (code) => stdout.append(`Process finished with: ${code || "nothing"}`));
-	childProcess.on("disconnect", () => stdout.append("Proc isconnect"));
-	*/
-
 	return childProcess;
 }
 

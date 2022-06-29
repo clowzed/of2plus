@@ -4,27 +4,14 @@ import * as http from 'http';
 import * as path from 'path';
 import * as targz from 'targz';
 import * as vscode from 'vscode';
-import { ConfigurationManager, Build } from './config-manager';
+import { ConfigurationManager, Build } from './managers/config-manager';
 import Path from 'pathlib-js';
 import * as sudo from 'sudo-prompt';
-
-//? Creating home dir for files
-let extFolder_ = new Path(helps.homeDirectory() + "/of2plus-important");
-
-if (!extFolder_.existsSync()) {
-	extFolder_.makeDirSync();
-}
-
-let extFolder = new Path(helps.homeDirectory() + "/of2plus-important");
-let installedConfig = new Path(extFolder.toString() + "/installed.json");
-
-let configManager = new Manager(installedConfig);
+import * as misc from './misc';
+import { OFPrebuildsHostingApi } from './hosting-api';
 
 
-// * Here we define functions which add buttons to status bar
-
-//* Status: Finished
-function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext) {
+function of2plus_buildbutton(context: vscode.ExtensionContext) {
 	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 
 	baritem.command = "of2plus.build";
@@ -34,42 +21,11 @@ function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext) {
 	context.subscriptions.push(baritem);
 }
 
+function of2plus_foldergen() {
 
-//* Status: Finished
-function of2PlusInitializeASourceBarButton(context: vscode.ExtensionContext) {
-	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+	let workspace = misc.workspace();
 
-	baritem.command = "of2plus.loadbashrc";
-	baritem.text = "Activate environment";
-
-	baritem.show();
-	context.subscriptions.push(baritem);
-	return baritem;
-}
-
-
-//* Status: Finished
-function of2PlusInitializeAIntellisenseBarButton(context: vscode.ExtensionContext) {
-	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-
-	baritem.command = "of2plus.activateIntellisense";
-	baritem.text = "Activate Intellisense";
-
-	baritem.show();
-	context.subscriptions.push(baritem);
-}
-
-
-//* Status: Finished
-//? This function generates standart folder structure
-function of2PlusGenerateStandartFoldersAndFiles() {
-
-	helps.info("Generating standart folder structure...");
-
-	let rootFolder = helps.workspaceFolder();
-
-
-	let foldersNames = ["applications", "bin",
+	let required_folders = ["applications", "bin",
 		"doc", "etc",
 		"lib", "src",
 		"tutorials",
@@ -81,45 +37,36 @@ function of2PlusGenerateStandartFoldersAndFiles() {
 		"Make",
 		".vscode"];
 
-	let fileNames = ["Make/files",
+	let required_files = ["Make/files",
 		"Make/options",
 		".vscode/bashrc",
 		".vscode/settings.json"];
 
-
-	//? This section generates folders
-	foldersNames.forEach(folderName => {
-		let fullFolderPath = path.join(rootFolder, folderName);
-
-		if (!fs.existsSync(fullFolderPath)) { vscode.workspace.fs.createDirectory(vscode.Uri.file(fullFolderPath)); }
+	required_folders.forEach(name => {
+		let folder_path = path.join(workspace, name);
+		if (!fs.existsSync(folder_path)) { vscode.workspace.fs.createDirectory(vscode.Uri.file(folder_path)); }
 
 	});
 
 
 	//? This section generates files
-	const workspaceEdit = new vscode.WorkspaceEdit();
+	const edit = new vscode.WorkspaceEdit();
 
-	fileNames.forEach(fileName => {
-		let fullFilePath = path.join(rootFolder, fileName);
+	required_files.forEach(name => {
+		let file_path = path.join(workspace, name);
 
-		if (!fs.existsSync(fullFilePath)) {
-			workspaceEdit.createFile(vscode.Uri.file(fullFilePath));
-			vscode.workspace.applyEdit(workspaceEdit);
-
+		if (!fs.existsSync(file_path)) {
+			edit.createFile(vscode.Uri.file(file_path));
+			vscode.workspace.applyEdit(edit);
 		}
 	});
 
-	helps.info("Folders structure was succesfully generated!");
+	vscode.commands.executeCommand('of2plus.intellisense')
 }
 
+async function of2plus_activate_intellisense() {
 
-
-
-//* Status: Finished
-//! You must have C/C++ Extension!
-async function intellisenseActivation() {
-
-	let settings_json = helps.workspaceFolder() + "/.vscode/settings.json";
+	let settings_json = misc.workspace() + "/.vscode/settings.json";
 
 	if (fs.existsSync(settings_json)) {
 		try {
@@ -139,14 +86,10 @@ async function intellisenseActivation() {
 
 	}
 	else {
-		helps.error("For activation run of2plus: Generate standart folder structure");
 		return;
 	}
 
-
-
-
-	let settingsPath = helps.workspaceFolder() + "/.vscode/c_cpp_properties.json";
+	let settings = misc.workspace() + "/.vscode/c_cpp_properties.json";
 
 
 	vscode.commands.executeCommand('C_Cpp.ResetDatabase').then(() => {
@@ -154,7 +97,7 @@ async function intellisenseActivation() {
 			vscode.commands.executeCommand('workbench.action.closeActiveEditor').then(() => {
 
 
-				let config = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || {};
+				let config = JSON.parse(fs.readFileSync(settings, 'utf8')) || {};
 
 				config['configurations'][0]['includePath'].push("~/of2plus-important/**");
 				config['configurations'][0]['includePath'].push("/usr/include/**");
@@ -163,7 +106,7 @@ async function intellisenseActivation() {
 					config['configurations'][0]['compilerPath'] = '/usr/local/bin/g++';
 				}
 
-				fs.writeFileSync(settingsPath, JSON.stringify(config));
+				fs.writeFileSync(settings, JSON.stringify(config));
 			});
 
 
@@ -175,106 +118,42 @@ async function intellisenseActivation() {
 
 }
 
+async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
+	let identifier = await misc.popup_manager.ask("123-456-789", "Type your identifier", "");
+	let url = await misc.popup_manager.ask("https://...", "type server domain", "");
 
-
-//* Status: Finised
-//! Untar not working
-//? Added check for same prebuild download
-async function of2plusDownloadPrebuilds(context: vscode.ExtensionContext) {
-
-	if (!helps.isConnectedToInternet()) {
-		helps.error("You are not connected to the internet! It is impossible to download prebuilds!");
+	if (identifier === "" || url === "") {
 		return;
 	}
+	else {
+		let api = new OFPrebuildsHostingApi(url, identifier);
+		let versions = await api.versions();
 
-	//? Get available versions and platforms for
+		if (versions?.length === 0) { return; }
 
-	let versions = await helps.json_from('http://127.0.0.1:5002/versions');
-	versions = versions['versions'];
+		let version = await misc.popup_manager.quickpick(versions, "Choose version of OpenFOAM") || "";
 
+		let platforms = await api.platforms_for(version);
 
-	if (versions?.length === 0) {
-		helps.error("No versions available! ");
-		return;
+		if (platforms?.length === 0) { return; }
+
+		let platform = await misc.popup_manager.quickpick(platforms, "Choose platform") || "";
+
+		if (misc.config_manager.get(version, platform) !== undefined) {
+			return;
+		}
+
+		if (!api.exists(version, platform)) {
+			return;
+		}
+
+		api.download_and_install(version, platform, identifier);
 	}
-
-	let version = await helps.quickpick(versions, "Choose version of OpenFOAM") || "";
-
-
-
-	let platforms = await helps.json_from(`http://127.0.0.1:5002/platforms_for?version=${version}`);
-	platforms = platforms['platforms'];
-
-	if (platforms.length === 0) {
-		helps.error("No platforms were found for this version!");
-		return;
-	}
-
-	let platform = await helps.quickpick(platforms, "Choose platform") || "";
-
-
-
-
-	let compressedPrebuildsFile = new Path(extFolder + `/${version}____${platform}.tar.gz`);
-	let destination = compressedPrebuildsFile.withSuffix("");
-
-
-	if (configManager.isInstalled(version, platform)) {
-		helps.info("You have already downloaded this prebuild!");
-		return;
-	}
-
-
-	if (!helps.prebuildExists(`http://127.0.0.1:5002/exists?version=${version}&platform=${platform}`)) {
-		helps.error("Prebuild for such version and platform does not exists!");
-		return;
-	}
-
-	helps.info("Prebuilds downloading was started...");
-
-	let anyError = false;
-
-
-
-	//? Downloading 
-	http.get(`http://127.0.0.1:5002/download?version=${version}&platform=${platform}`,
-		(res) => {
-			const file = fs.createWriteStream(compressedPrebuildsFile.toString());
-
-			res.pipe(file);
-
-			file.on('finish', () => {
-				file.close();
-				helps.info(`Prebuilds were succesfully downloaded!`);
-				targz.decompress({
-					src: compressedPrebuildsFile.toString(),
-					dest: destination.toString(),
-				},
-					(err) => {
-						if (err) {
-							helps.error(err?.toString() || "");
-							anyError = true;
-						}
-						else {
-							helps.info("Archive was sucessfully untared!");
-						}
-					});
-
-				if (!anyError) {
-					configManager.install(version, platform, destination, new Path(destination + `/OpenFOAM-v${version}/etc/bashrc`));
-				}
-
-			}
-			);
-		})
-		.on("error", (err) => {
-			helps.error("Error occured while downloading prebuilds! Check output for more information");
-			helps.outputChannel("of2plus stderr").append(err.message);
-			anyError = true;
-		});
-
 };
+
+
+
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -283,26 +162,22 @@ export function activate(context: vscode.ExtensionContext) {
 	of2PlusInitializeBuildBarButton(context);
 	of2PlusInitializeAIntellisenseBarButton(context);
 
-
-
-
 	//? Simple activation command
 	let activation = vscode.commands.registerCommand('of2plus.activate', () => {
 		helps.info("Of2plus extension is activated!");
 	});
 
-
 	//? This builds with wmake
 	let disposable = vscode.commands.registerCommand('of2plus.build', async () => {
 		helps.info("Build was started!");
-		await helps.spawnRedirected(`wmake ${helps.workspaceFolder()}`, helps.outputChannel("wmake build"), helps.outputChannel("wmake build"));
+		await helps.spawnRedirected(`wmake ${misc.workspace()}`, helps.outputChannel("wmake build"), helps.outputChannel("wmake build"));
 		helps.info("Build finished");
 	});
 
 
 	//? Loads environment
 	let loadBashrc = vscode.commands.registerCommand("of2plus.loadbashrc", async () => {
-		if (!fs.existsSync(helps.workspaceFolder() + "/.vscode/bashrc")) {
+		if (!fs.existsSync(misc.workspace() + "/.vscode/bashrc")) {
 			helps.error("Run of2plus: Generate standart folder structure!");
 			return;
 		}
@@ -323,12 +198,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let build = configManager.find(version, platform);
 
-		fs.writeFileSync(helps.workspaceFolder() + "/.vscode/bashrc", ". " + configManager.find(version, platform)[0]["bashrc"] + '\nexport LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64"\n');
+		fs.writeFileSync(misc.workspace() + "/.vscode/bashrc", ". " + configManager.find(version, platform)[0]["bashrc"] + '\nexport LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64"\n');
 		version_choosed.text = `OpenFOAM: version: ${version} platform: ${platform}`;
 
 	});
 
-	sudo.exec(`echo ". ${helps.workspaceFolder() + "/.vscode/bashrc"}" >> /etc/bashrc`, { name: "Of2plus update bashrc" }, (err) => {
+	sudo.exec(`echo ". ${misc.workspace() + "/.vscode/bashrc"}" >> /etc/bashrc`, { name: "Of2plus update bashrc" }, (err) => {
 		if (err) {
 			helps.error(err.message);
 			helps.error("Error occured while activating bashrc!");
@@ -348,8 +223,6 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(loadBashrc);
 	context.subscriptions.push(intellisense);
 }
-
-
 
 export function deactivate() {
 	helps.info("of2plus extension is deactivated!");
