@@ -33,7 +33,7 @@ export class ChannelsManager {
 
     //* Sends text message with 
     //* info prestring into channel
-    cinformatiom(channel_name: string, text: string) {
+    cinformation(channel_name: string, text: string) {
         let channel = this.get_channel(channel_name);
         channel.append(`of2plus info  : ${text}`);
     }

@@ -17,8 +17,7 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as targz from 'targz';
 import Path from 'pathlib-js';
-import { extension_folder, popup_manager, config_manager } from './misc';
-import { Build } from './managers/config-manager';
+import { extension_folder, popup_manager, config_manager, channels_manger, information, error } from './misc';
 
 
 export class OFPrebuildsHostingApi {
@@ -69,24 +68,37 @@ export class OFPrebuildsHostingApi {
     download_and_install(version: string, platform: string, identifier: string) {
 
         let error_ooccured = false;
-        
+
+        channels_manger.cinformation('of2plus', "Checking internet connection and prebuild existance...");
+
         //? Check if we are connected and prebuild exists
         if (this.check_connection() && this.exists(version, platform)) {
 
             let final_url = this.url + `/download?version=${version}&platform=${platform}&invitation=${identifier}`
 
+            channels_manger.cinformation('of2plus', "Asking server...");
+
             http.get(final_url,
                 (res) => {
+                    channels_manger.cinformation('of2plus', `Server responded with : ${res.statusCode}`);
+
                     let ofprebuild_archive = new Path(extension_folder + `/${version}____${platform}.tar.gz`);
+
+                    channels_manger.cinformation('of2plus', `Archive path: ${ofprebuild_archive.toString()}`);
 
                     let destination = ofprebuild_archive.withSuffix("");
 
+                    channels_manger.cinformation('of2plus', `Destination: ${destination.toString()}`)
+
                     const file = fs.createWriteStream(ofprebuild_archive.toString());
 
+                    channels_manger.cinformation("of2plus", "Writing data to archive....");
                     res.pipe(file);
 
                     file.on('finish', () => {
                         file.close();
+
+                        information("Archive was downloaded! Please do not close until it wil be decompressed! It can take several minutes");
 
                         targz.decompress({
                             src: ofprebuild_archive.toString(),
@@ -94,10 +106,11 @@ export class OFPrebuildsHostingApi {
                         },
                             (err: { toString: () => any; }) => {
                                 if (err) {
-                                    popup_manager.error(err?.toString() || "");
+                                    error_ooccured = true;
+                                    error(`Error occured while decompressing: ${err.toString()}`)
                                 }
                                 else {
-                                    popup_manager.information("Archive was sucessfully decompressed!");
+                                    information("Archive was sucessfully decompressed!");
                                 }
                             });
 
@@ -113,13 +126,16 @@ export class OFPrebuildsHostingApi {
                     );
                 })
                 .on("error", (err) => {
-                    popup_manager.error("Error occured while downloading prebuilds! Check output for more information");
+                    error("Error occured while downloading prebuilds! Check output for more information");
+                    channels_manger.cerror("of2plus", err.message);
                     error_ooccured = true;
                 });
         }
         else {
+            channels_manger.cerror('of2plus', "You are not connected to the internet or this build does not exists!");
             error_ooccured = true;
         }
+
         return error_ooccured;
     }
 

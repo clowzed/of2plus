@@ -24,8 +24,7 @@ if (!extension_folder.existsSync()) {
 
 export const global_bashrc = new Path(extension_folder.toString() + '/global_bashrc');
 
-if (global_bashrc.existsSync())
-{
+if (global_bashrc.existsSync()) {
     fs.writeFileSync(global_bashrc, "");
 }
 
@@ -57,3 +56,19 @@ export let execute = (cmd: string) =>
             return resolve(out);
         });
     });
+
+export let information = (text: string) => {
+    popup_manager.information(text);
+    channels_manger.cinformation('of2plus', text);
+}
+
+export let warning = (text: string) => {
+    popup_manager.warning(text);
+    channels_manger.cwarning('of2plus', text);
+}
+
+export let error = (text: string) => {
+    popup_manager.error(text);
+    channels_manger.cerror('of2plus', text);
+}
+

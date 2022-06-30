@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as helps from "./helpers";
 import * as http from 'http';
 import * as path from 'path';
-import * as targz from 'targz';
 import * as vscode from 'vscode';
 import { ConfigurationManager, Build } from './managers/config-manager';
 import Path from 'pathlib-js';
@@ -21,6 +20,7 @@ function of2plus_buildbutton(context: vscode.ExtensionContext) {
 	context.subscriptions.push(baritem);
 }
 
+
 function of2plus_choosed_build_button(context: vscode.ExtensionContext) {
 	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 
@@ -31,7 +31,10 @@ function of2plus_choosed_build_button(context: vscode.ExtensionContext) {
 	return baritem;
 }
 
-function of2plus_foldergen() {
+
+async function of2plus_foldergen() {
+
+	misc.information("Gemerating standart folder structure and activating intellisense...");
 
 	let workspace = misc.workspace();
 
@@ -71,11 +74,14 @@ function of2plus_foldergen() {
 		}
 	});
 
-	vscode.commands.executeCommand('of2plus.intellisense')
+	misc.information("Folders and files for standart folder structure was sucesfully generated!");
+
+	await vscode.commands.executeCommand('of2plus.intellisense')
 }
 
-
 async function of2plus_activate_intellisense() {
+
+	misc.information("Activating intellisense...");
 
 	let settings_json = misc.workspace() + "/.vscode/settings.json";
 
@@ -97,6 +103,7 @@ async function of2plus_activate_intellisense() {
 
 	}
 	else {
+		misc.error("settings.json file was not found! Run 'of2plus: Generate standart folder structure.'");
 		return;
 	}
 
@@ -127,68 +134,126 @@ async function of2plus_activate_intellisense() {
 			vscode.commands.executeCommand('workbench.action.closeActiveEditor');
 		});
 
+	misc.information("Intellisense was succesfully activated!");
 }
 
 
 async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
-	let identifier = await misc.popup_manager.ask("123-456-789", "Type your identifier", "");
-	let url = await misc.popup_manager.ask("https://...", "type server domain", "");
+	// TODO Add checking server protocol
 
-	if (identifier === "" || url === "") {
+	misc.information("Enter valid identifier for downloading.");
+	let identifier = await misc.popup_manager.ask("123-456-789", "Enter your identifier", "");
+
+	misc.information("Enter server domain from which to download");
+
+	let url = await misc.popup_manager.ask("https://...", "Enter server domain", "");
+
+	let api = new OFPrebuildsHostingApi(url, identifier);
+
+	if (identifier === "") {
+		misc.error("We can not download OpenFoam prebuilds without valid due to download protection! Contact with hosting admin to recieve valid identifier");
+		return;
+	}
+	else if (url === "") {
+		misc.error("We can not download OpenFoam prebuilds without knowing from where to download.");
 		return;
 	}
 	else {
-		let api = new OFPrebuildsHostingApi(url, identifier);
+		misc.channels_manger.cinformation("of2plus", "Asking server for versions...");
+
 		let versions = await api.versions();
 
-		if (versions?.length === 0) { return; }
+		misc.channels_manger.cinformation("of2plus", `Versions amount: ${versions.length}`);
+
+		if (versions?.length === 0) {
+			misc.error("There are no available versions on hosting. Contact with administartor!");
+			return;
+		}
+
+		misc.channels_manger.cinformation("of2plus", `Asking for version...`);
 
 		let version = await misc.popup_manager.quickpick(versions, "Choose version of OpenFOAM") || "";
 
+		misc.channels_manger.cinformation("of2plus", `User choosed: ${version}`);
+
+		if (!versions.includes(version)) {
+			misc.error("We cannot download build without knowing OpenFoam version you need!");
+			return;
+		}
+
+		misc.channels_manger.cinformation("of2plus", "Asking server for platforms...");
+
 		let platforms = await api.platforms_for(version);
 
-		if (platforms?.length === 0) { return; }
+		if (platforms?.length === 0) {
+			misc.error(`There are no available platforms for version: ${version} on hosting. Contact with administartor!`);
+			return;
+		}
+
+		misc.channels_manger.cinformation("of2plus", `Asking for platform...`);
 
 		let platform = await misc.popup_manager.quickpick(platforms, "Choose platform") || "";
 
-		if (misc.config_manager.get(version, platform) !== undefined) {
+		misc.channels_manger.cinformation("of2plus", `User choosed: ${platform}`);
+
+		if (!platforms.includes(platform)) {
+			misc.error("We cannot download build without knowing build platform you need!");
 			return;
+		}
+
+		if (misc.config_manager.installed(version, platform)) {
+			misc.warning(`OpenFoam build version ${version}: platform : ${platform} is already downloaded!`);
 		}
 
 		if (!api.exists(version, platform)) {
+			misc.error("Server responded that there was no such build. It must be a bug. Contact with admin.");
 			return;
 		}
 
-		api.download_and_install(version, platform, identifier);
+		if (api.download_and_install(version, platform, identifier)) {
+			misc.error("Error occured while downloading prebuild. Check output for more information!");
+		}
 	}
 };
 
 
 export async function activate(context: vscode.ExtensionContext) {
-	//? Place build button to bottom
+
 	of2plus_buildbutton(context);
 
 	let choosed_build_button = of2plus_choosed_build_button(context);
 
 	let build = vscode.commands.registerCommand('of2plus.build', async () => {
+
 		let build = misc.config_manager.current_build();
+
 		if (build === undefined) {
+			misc.error("You have not choosed openfoam build yet! Run 'of2plus: Choose build'");
 			return;
 		}
 
+		misc.channels_manger.cinformation('of2plus', "Rewriting global bashrc...");
+
 		fs.writeFileSync(misc.global_bashrc, ". " + build.bashrc_path);
 
+		misc.channels_manger.cinformation('of2plus', "Building...");
 		await misc.execute(`wmake ${misc.workspace()}`);
 	});
 
+
 	let choose_build = vscode.commands.registerCommand('of2plus.choose_build', async () => {
 		let builds = misc.config_manager.builds()
-		if (builds.length === 0) { return; }
+
+		if (builds.length === 0) {
+			misc.error("No installed build were found! Run 'of2plus: Download OpenFoam'");
+			return;
+		}
 
 		let builds_strings = builds.map((build) => `Version: ${build.version} Platform: ${build.platform}`);
 
 		let choosed_build = await misc.popup_manager.quickpick(builds_strings, "Choose openfoam build");
+
 
 		if ((builds_strings.filter((build) => build === choosed_build)).length === 0) { return }
 
@@ -206,15 +271,18 @@ export async function activate(context: vscode.ExtensionContext) {
 	//? Before build we place activation of
 	//? bashrc we need inside this file
 	//! requires sudo access
+	//* Done
+	//! Not tested
 
 	let bashrc_data = fs.readFileSync('/etc/bashrc');
 
-	//? Check if we already modified /etc/bashrc
+	//? Check if we've already modified /etc/bashrc
 	if (!("export LD_LIBRARY_PATH" in bashrc_data)) {
 		let command = ". " + misc.global_bashrc.toString() + '\nexport LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64"\n >> /etc/bashrc';
 
 		sudo.exec(command, { name: "of2plus: update bashrc" }, (err) => {
 			if (err) {
+
 			}
 		});
 

@@ -25,8 +25,8 @@ export type Build = {
 
 export type Config = {
     installed_builds: Build[],
-    choosed_version: String,
-    choosed_platform: String,
+    choosed_version: string,
+    choosed_platform: string,
 };
 
 
@@ -75,7 +75,7 @@ export class ConfigurationManager {
     //* This function checks if build with
     //* given params is installed
     installed(version: string, platform: string) {
-        return this.get(version, platform) != undefined;
+        return this.get(version, platform) !== undefined;
     }
 
     //* This function returns build
@@ -83,7 +83,7 @@ export class ConfigurationManager {
     //* build exists. 
     //! If the build does not exist
     //! function returns 'undefined'
-    get(version: String, platform: String) {
+    get(version: string, platform: string) {
         if (!this.installed(version, platform)) {
             return undefined;
         }
@@ -107,19 +107,17 @@ export class ConfigurationManager {
         return this.config.choosed_platform || "";
     }
 
-    set_version(version: String) {
+    set_version(version: string) {
         this.config.choosed_version = version;
         this.save()
     }
 
-    set_platform(platform: String)
-    {
+    set_platform(platform: string) {
         this.config.choosed_platform = platform;
         this.save()
     }
 
-    current_build()
-    {
+    current_build() {
         return this.get(this.choosed_version(), this.choosed_platform());
     }
 }
