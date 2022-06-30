@@ -10,7 +10,7 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:of2plus.activate"
+        "*"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -22,10 +22,6 @@
             {
                 "command": "of2plus.genfolders",
                 "title": "of2plus: Generate standart folder structure."
-            },
-            {
-                "command": "of2plus.activate",
-                "title": "of2plus: Activate extension."
             },
             {
                 "command": "of2plus.downloadOF",

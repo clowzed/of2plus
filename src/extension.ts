@@ -8,23 +8,20 @@ import { Manager } from './confman';
 import Path from 'pathlib-js';
 import * as sudo from 'sudo-prompt';
 
-//? Creating home dir for files
-let extFolder_ = new Path(helps.homeDirectory() + "/of2plus-important");
 
-if (!extFolder_.existsSync()) {
-	extFolder_.makeDirSync();
+let extensionFolder = new Path(helps.homeDirectory() + "/of2plus-important");
+
+if (!extensionFolder.existsSync()) {
+	extensionFolder.makeDirSync();
 }
 
-let extFolder = new Path(helps.homeDirectory() + "/of2plus-important");
-let installedConfig = new Path(extFolder.toString() + "/installed.json");
+let configuration = new Path(extensionFolder.toString()  + "/installed.json");
 
-let configManager = new Manager(installedConfig);
+let configManager = new Manager(configuration);
 
 
-// * Here we define functions which add buttons to status bar
-
-//* Status: Finished
-function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext) {
+function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext) 
+{
 	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 
 	baritem.command = "of2plus.build";
@@ -35,7 +32,6 @@ function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext) {
 }
 
 
-//* Status: Finished
 function of2PlusInitializeASourceBarButton(context: vscode.ExtensionContext) {
 	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 
@@ -47,27 +43,9 @@ function of2PlusInitializeASourceBarButton(context: vscode.ExtensionContext) {
 	return baritem;
 }
 
-
-//* Status: Finished
-function of2PlusInitializeAIntellisenseBarButton(context: vscode.ExtensionContext) {
-	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-
-	baritem.command = "of2plus.activateIntellisense";
-	baritem.text = "Activate Intellisense";
-
-	baritem.show();
-	context.subscriptions.push(baritem);
-}
-
-
-//* Status: Finished
-//? This function generates standart folder structure
 function of2PlusGenerateStandartFoldersAndFiles() {
 
-	helps.info("Generating standart folder structure...");
-
 	let rootFolder = helps.workspaceFolder();
-
 
 	let foldersNames = ["applications", "bin",
 		"doc", "etc",
@@ -87,7 +65,6 @@ function of2PlusGenerateStandartFoldersAndFiles() {
 		".vscode/settings.json"];
 
 
-	//? This section generates folders
 	foldersNames.forEach(folderName => {
 		let fullFolderPath = path.join(rootFolder, folderName);
 
@@ -95,8 +72,6 @@ function of2PlusGenerateStandartFoldersAndFiles() {
 
 	});
 
-
-	//? This section generates files
 	const workspaceEdit = new vscode.WorkspaceEdit();
 
 	fileNames.forEach(fileName => {
@@ -109,7 +84,7 @@ function of2PlusGenerateStandartFoldersAndFiles() {
 		}
 	});
 
-	helps.info("Folders structure was succesfully generated!");
+	vscode.commands.executeCommand("of2plus.activateIntellisense");
 }
 
 
@@ -179,7 +154,6 @@ async function intellisenseActivation() {
 
 
 //* Status: Finised
-//! Untar not working
 //? Added check for same prebuild download
 async function of2plusDownloadPrebuilds(context: vscode.ExtensionContext) {
 
@@ -216,7 +190,7 @@ async function of2plusDownloadPrebuilds(context: vscode.ExtensionContext) {
 
 
 
-	let compressedPrebuildsFile = new Path(extFolder + `/${version}____${platform}.tar.gz`);
+	let compressedPrebuildsFile = new Path(extensionFolder + `/${version}____${platform}.tar.gz`);
 	let destination = compressedPrebuildsFile.withSuffix("");
 
 
@@ -277,19 +251,11 @@ async function of2plusDownloadPrebuilds(context: vscode.ExtensionContext) {
 };
 
 
-export function activate(context: vscode.ExtensionContext) {
-	//? Adding bar buttons
+export function activate(context: vscode.ExtensionContext) 
+{
 	let version_choosed = of2PlusInitializeASourceBarButton(context);
+
 	of2PlusInitializeBuildBarButton(context);
-	of2PlusInitializeAIntellisenseBarButton(context);
-
-
-
-
-	//? Simple activation command
-	let activation = vscode.commands.registerCommand('of2plus.activate', () => {
-		helps.info("Of2plus extension is activated!");
-	});
 
 
 	//? This builds with wmake
