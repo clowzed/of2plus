@@ -14,12 +14,21 @@ import { PopupManager } from './managers/popup-manager';
 import { ChannelsManager } from './managers/channels-manager';
 import * as vscode from 'vscode';
 import * as cp from "child_process";
+import * as fs from 'fs';
 
 export const extension_folder = new Path(process.env.HOME || process.env.USERPROFILE + "/of2plus-important");
 
 if (!extension_folder.existsSync()) {
     extension_folder.makeDirSync();
 }
+
+export const global_bashrc = new Path(extension_folder.toString() + '/global_bashrc');
+
+if (global_bashrc.existsSync())
+{
+    fs.writeFileSync(global_bashrc, "");
+}
+
 
 export let config_filepath = new Path(extension_folder.toString() + "/installed.json");
 
@@ -39,7 +48,7 @@ export let workspace = () => {
         || "./";
 };
 
-const execute = (cmd: string) =>
+export let execute = (cmd: string) =>
     new Promise<string>((resolve, reject) => {
         cp.exec(cmd, (err, out) => {
             if (err) {

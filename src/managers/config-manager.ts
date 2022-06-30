@@ -13,6 +13,7 @@ For now it keeps installed openfoam builds and their paths
 
 import * as fs from 'fs';
 import Path from 'pathlib-js';
+import { config_filepath } from '../misc';
 
 
 export type Build = {
@@ -23,7 +24,9 @@ export type Build = {
 };
 
 export type Config = {
-    installed_builds: Build[]
+    installed_builds: Build[],
+    choosed_version: String,
+    choosed_platform: String,
 };
 
 
@@ -80,7 +83,7 @@ export class ConfigurationManager {
     //* build exists. 
     //! If the build does not exist
     //! function returns 'undefined'
-    get(version: string, platform: string) {
+    get(version: String, platform: String) {
         if (!this.installed(version, platform)) {
             return undefined;
         }
@@ -94,5 +97,29 @@ export class ConfigurationManager {
     install(build: Build) {
         this.config.installed_builds.push(build);
         this.save();
+    }
+
+    choosed_version() {
+        return this.config.choosed_version || "";
+    }
+
+    choosed_platform() {
+        return this.config.choosed_platform || "";
+    }
+
+    set_version(version: String) {
+        this.config.choosed_version = version;
+        this.save()
+    }
+
+    set_platform(platform: String)
+    {
+        this.config.choosed_platform = platform;
+        this.save()
+    }
+
+    current_build()
+    {
+        return this.get(this.choosed_version(), this.choosed_platform());
     }
 }

@@ -21,6 +21,16 @@ function of2plus_buildbutton(context: vscode.ExtensionContext) {
 	context.subscriptions.push(baritem);
 }
 
+function of2plus_choosed_build_button(context: vscode.ExtensionContext) {
+	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+
+	baritem.text = `Version: ${misc.config_manager.choosed_version()} Platform: ${misc.config_manager.choosed_platform()}`;
+
+	baritem.show();
+	context.subscriptions.push(baritem);
+	return baritem;
+}
+
 function of2plus_foldergen() {
 
 	let workspace = misc.workspace();
@@ -63,6 +73,7 @@ function of2plus_foldergen() {
 
 	vscode.commands.executeCommand('of2plus.intellisense')
 }
+
 
 async function of2plus_activate_intellisense() {
 
@@ -118,6 +129,7 @@ async function of2plus_activate_intellisense() {
 
 }
 
+
 async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
 	let identifier = await misc.popup_manager.ask("123-456-789", "Type your identifier", "");
@@ -153,77 +165,68 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 };
 
 
+export async function activate(context: vscode.ExtensionContext) {
+	//? Place build button to bottom
+	of2plus_buildbutton(context);
 
+	let choosed_build_button = of2plus_choosed_build_button(context);
 
-
-export function activate(context: vscode.ExtensionContext) {
-	//? Adding bar buttons
-	let version_choosed = of2PlusInitializeASourceBarButton(context);
-	of2PlusInitializeBuildBarButton(context);
-	of2PlusInitializeAIntellisenseBarButton(context);
-
-	//? Simple activation command
-	let activation = vscode.commands.registerCommand('of2plus.activate', () => {
-		helps.info("Of2plus extension is activated!");
-	});
-
-	//? This builds with wmake
-	let disposable = vscode.commands.registerCommand('of2plus.build', async () => {
-		helps.info("Build was started!");
-		await helps.spawnRedirected(`wmake ${misc.workspace()}`, helps.outputChannel("wmake build"), helps.outputChannel("wmake build"));
-		helps.info("Build finished");
-	});
-
-
-	//? Loads environment
-	let loadBashrc = vscode.commands.registerCommand("of2plus.loadbashrc", async () => {
-		if (!fs.existsSync(misc.workspace() + "/.vscode/bashrc")) {
-			helps.error("Run of2plus: Generate standart folder structure!");
+	let build = vscode.commands.registerCommand('of2plus.build', async () => {
+		let build = misc.config_manager.current_build();
+		if (build === undefined) {
 			return;
 		}
 
-		let builds = configManager.builds();
+		fs.writeFileSync(misc.global_bashrc, ". " + build.bashrc_path);
 
-		if (builds === undefined) {
-			helps.info("No builds were found");
-			return;
-		}
-
-		let versions = builds.map((build: { version: string }) => build['version']);
-		let platforms = builds.map((build: { platform: string }) => build['platform']);
-
-		let version = await helps.quickpick(versions, "Choose version of OpenFOAM") || "";
-		let platform = await helps.quickpick(platforms, "Choose platform of OpenFOAM") || "";
-
-
-		let build = configManager.find(version, platform);
-
-		fs.writeFileSync(misc.workspace() + "/.vscode/bashrc", ". " + configManager.find(version, platform)[0]["bashrc"] + '\nexport LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64"\n');
-		version_choosed.text = `OpenFOAM: version: ${version} platform: ${platform}`;
-
+		await misc.execute(`wmake ${misc.workspace()}`);
 	});
 
-	sudo.exec(`echo ". ${misc.workspace() + "/.vscode/bashrc"}" >> /etc/bashrc`, { name: "Of2plus update bashrc" }, (err) => {
-		if (err) {
-			helps.error(err.message);
-			helps.error("Error occured while activating bashrc!");
-		}
-	});
+	let choose_build = vscode.commands.registerCommand('of2plus.choose_build', async () => {
+		let builds = misc.config_manager.builds()
+		if (builds.length === 0) { return; }
+
+		let builds_strings = builds.map((build) => `Version: ${build.version} Platform: ${build.platform}`);
+
+		let choosed_build = await misc.popup_manager.quickpick(builds_strings, "Choose openfoam build");
+
+		if ((builds_strings.filter((build) => build === choosed_build)).length === 0) { return }
+
+		let build = builds[builds_strings.indexOf(choosed_build)];
+
+		misc.config_manager.set_version(build.version);
+		misc.config_manager.set_platform(build.platform);
+	})
 
 
-	let foldersInit = vscode.commands.registerCommand("of2plus.genfolders", of2PlusGenerateStandartFoldersAndFiles);
-	let foamLoad = vscode.commands.registerCommand("of2plus.downloadOF", of2plusDownloadPrebuilds);
-	let intellisense = vscode.commands.registerCommand("of2plus.activateIntellisense", intellisenseActivation);
+	//? On startup we check if our bashrc 
+	//? is already in /etc/bashrc
+	//? If not we create out own bashrc in 
+	//? extension folder
+	//? Before build we place activation of
+	//? bashrc we need inside this file
+	//! requires sudo access
 
+	let bashrc_data = fs.readFileSync('/etc/bashrc');
 
-	context.subscriptions.push(disposable);
-	context.subscriptions.push(foldersInit);
-	context.subscriptions.push(activation);
-	context.subscriptions.push(foamLoad);
-	context.subscriptions.push(loadBashrc);
-	context.subscriptions.push(intellisense);
+	//? Check if we already modified /etc/bashrc
+	if (!("export LD_LIBRARY_PATH" in bashrc_data)) {
+		let command = ". " + misc.global_bashrc.toString() + '\nexport LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64"\n >> /etc/bashrc';
+
+		sudo.exec(command, { name: "of2plus: update bashrc" }, (err) => {
+			if (err) {
+			}
+		});
+
+	}
+
+	let foldergen = vscode.commands.registerCommand("of2plus.genfolders", of2plus_foldergen);
+	let download_prebuilds = vscode.commands.registerCommand("of2plus.downloadOF", of2plus_download_prebuilds);
+
+	context.subscriptions.push(build);
+	context.subscriptions.push(foldergen);
+	context.subscriptions.push(download_prebuilds);
 }
 
 export function deactivate() {
-	helps.info("of2plus extension is deactivated!");
 }
