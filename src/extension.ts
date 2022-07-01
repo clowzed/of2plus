@@ -1,10 +1,6 @@
 import * as fs from 'fs';
-import * as helps from "./helpers";
-import * as http from 'http';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { ConfigurationManager, Build } from './managers/config-manager';
-import Path from 'pathlib-js';
 import * as sudo from 'sudo-prompt';
 import * as misc from './misc';
 import { OFPrebuildsHostingApi } from './hosting-api';
@@ -79,6 +75,7 @@ async function of2plus_foldergen() {
 	await vscode.commands.executeCommand('of2plus.intellisense')
 }
 
+
 async function of2plus_activate_intellisense() {
 
 	misc.information("Activating intellisense...");
@@ -143,11 +140,11 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 	// TODO Add checking server protocol
 
 	misc.information("Enter valid identifier for downloading.");
-	let identifier = await misc.popup_manager.ask("123-456-789", "Enter your identifier", "");
+	let identifier = await misc.popup_manager.ask("123-456-789", "Enter your identifier", "") || "";
 
 	misc.information("Enter server domain from which to download");
 
-	let url = await misc.popup_manager.ask("https://...", "Enter server domain", "");
+	let url = await misc.popup_manager.ask("https://...", "Enter server domain", "") || "";
 
 	let api = new OFPrebuildsHostingApi(url, identifier);
 
@@ -235,7 +232,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		misc.channels_manger.cinformation('of2plus', "Rewriting global bashrc...");
 
-		fs.writeFileSync(misc.global_bashrc, ". " + build.bashrc_path);
+		fs.writeFileSync(misc.global_bashrc.toString(), ". " + build.bashrc_path);
 
 		misc.channels_manger.cinformation('of2plus', "Building...");
 		await misc.execute(`wmake ${misc.workspace()}`);
@@ -251,17 +248,25 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 
 		let builds_strings = builds.map((build) => `Version: ${build.version} Platform: ${build.platform}`);
+ 
+		let choosed_build = await misc.popup_manager.quickpick(builds_strings, "Choose openfoam build") || "";
 
-		let choosed_build = await misc.popup_manager.quickpick(builds_strings, "Choose openfoam build");
+		misc.channels_manger.cinformation("of2plus", `User choosed: ${choosed_build}`);
 
-
-		if ((builds_strings.filter((build) => build === choosed_build)).length === 0) { return }
+		if (choosed_build === "")
+		{
+			misc.error("Please select your build!");
+			return; 
+		}
 
 		let build = builds[builds_strings.indexOf(choosed_build)];
 
 		misc.config_manager.set_version(build.version);
 		misc.config_manager.set_platform(build.platform);
-	})
+
+		misc.information("New build was saved!");
+		
+	});
 
 
 	//? On startup we check if our bashrc 
@@ -271,10 +276,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	//? Before build we place activation of
 	//? bashrc we need inside this file
 	//! requires sudo access
-	//* Done
-	//! Not tested
 
 	let bashrc_data = fs.readFileSync('/etc/bashrc');
+
 
 	//? Check if we've already modified /etc/bashrc
 	if (!("export LD_LIBRARY_PATH" in bashrc_data)) {
@@ -282,7 +286,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		sudo.exec(command, { name: "of2plus: update bashrc" }, (err) => {
 			if (err) {
-
+				misc.error(`Error occured while modifying bashrc! Reason : ${err.message}`);
 			}
 		});
 
@@ -296,5 +300,4 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(download_prebuilds);
 }
 
-export function deactivate() {
-}
+export function deactivate() { }

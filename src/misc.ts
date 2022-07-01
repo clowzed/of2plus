@@ -25,13 +25,13 @@ if (!extension_folder.existsSync()) {
 export const global_bashrc = new Path(extension_folder.toString() + '/global_bashrc');
 
 if (global_bashrc.existsSync()) {
-    fs.writeFileSync(global_bashrc, "");
+    fs.writeFileSync(global_bashrc.toString(), "");
 }
 
 
 export let config_filepath = new Path(extension_folder.toString() + "/installed.json");
 
-export let config_manager = new ConfigurationManager(config_filepath.toString());
+export let config_manager = new ConfigurationManager(config_filepath);
 
 export let popup_manager = new PopupManager();
 
