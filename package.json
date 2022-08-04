@@ -10,7 +10,7 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:of2plus.activate"
+        "*"
     ],
     "main": "./out/extension.js",
     "contributes": {

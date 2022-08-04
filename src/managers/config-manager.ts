@@ -37,13 +37,14 @@ export class ConfigurationManager {
 
     constructor(filepath: Path) {
         this.filepath = filepath;
+        this.config = {"choosed_platform": "", "choosed_version": "", "installed_builds": []};
         this.load();
     }
 
     //* This function loads config from path
     load() {
-        if (!fs.existsSync(this.filepath)) {
-            this.save()
+        if (!fs.existsSync(this.filepath.toString())) {
+            this.save();
         }
         this.config = JSON.parse(fs.readFileSync(this.filepath.toString(), 'utf-8'));
     }
@@ -51,7 +52,7 @@ export class ConfigurationManager {
     //* THis function writes json
     //* with current config to file
     save() {
-        fs.writeFileSync(this.filepath.toString(), JSON.stringify(this.config))
+        fs.writeFileSync(this.filepath.toString(), JSON.stringify(this.config));
     }
 
     //* This function returns an array

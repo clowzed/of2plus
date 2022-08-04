@@ -144,7 +144,7 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
 	misc.information("Enter server domain from which to download");
 
-	let url = await misc.popup_manager.ask("https://...", "Enter server domain", "") || "";
+	let url = await misc.popup_manager.ask("https://...", "Enter server domain", "") || "http://egorych.aero:16143";
 
 	let api = new OFPrebuildsHostingApi(url, identifier);
 
@@ -160,6 +160,7 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 		misc.channels_manger.cinformation("of2plus", "Asking server for versions...");
 
 		let versions = await api.versions();
+		console.log(versions);
 
 		misc.channels_manger.cinformation("of2plus", `Versions amount: ${versions.length}`);
 
@@ -208,7 +209,7 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		if (api.download_and_install(version, platform, identifier)) {
+		if (await api.download_and_install(version, platform, identifier)) {
 			misc.error("Error occured while downloading prebuild. Check output for more information!");
 		}
 	}
@@ -248,7 +249,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 
 		let builds_strings = builds.map((build) => `Version: ${build.version} Platform: ${build.platform}`);
+
  
+		// @ts-ignore Thinks that builds_strings has less than 1 element
 		let choosed_build = await misc.popup_manager.quickpick(builds_strings, "Choose openfoam build") || "";
 
 		misc.channels_manger.cinformation("of2plus", `User choosed: ${choosed_build}`);
@@ -277,14 +280,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	//? bashrc we need inside this file
 	//! requires sudo access
 
-	let bashrc_data = fs.readFileSync('/etc/bashrc');
+	let bashrc_data = fs.readFileSync('/etc/bash.bashrc');
 
 
 	//? Check if we've already modified /etc/bashrc
 	if (!("export LD_LIBRARY_PATH" in bashrc_data)) {
 		let command = ". " + misc.global_bashrc.toString() + '\nexport LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64"\n >> /etc/bashrc';
 
-		sudo.exec(command, { name: "of2plus: update bashrc" }, (err) => {
+		sudo.exec(command, { name: "of2plus update bashrc" }, (err) => {
 			if (err) {
 				misc.error(`Error occured while modifying bashrc! Reason : ${err.message}`);
 			}

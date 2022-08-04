@@ -65,14 +65,15 @@ export class OFPrebuildsHostingApi {
         return answer['exists'] === 'true';
     }
 
-    download_and_install(version: string, platform: string, identifier: string) {
+    async download_and_install(version: string, platform: string, identifier: string) {
 
         let error_ooccured = false;
 
         channels_manger.cinformation('of2plus', "Checking internet connection and prebuild existance...");
 
         //? Check if we are connected and prebuild exists
-        if (this.check_connection() && this.exists(version, platform)) {
+        if (this.check_connection() && await this.exists(version, platform))
+        {
 
             let final_url = this.url + `/download?version=${version}&platform=${platform}&invitation=${identifier}`
 
@@ -104,7 +105,7 @@ export class OFPrebuildsHostingApi {
                             src: ofprebuild_archive.toString(),
                             dest: destination.toString(),
                         },
-                            (err: { toString: () => any; }) => {
+                            (err) => {
                                 if (err) {
                                     error_ooccured = true;
                                     error(`Error occured while decompressing: ${err.toString()}`)
@@ -118,8 +119,8 @@ export class OFPrebuildsHostingApi {
                             config_manager.install({
                                 version: version,
                                 platform: platform,
-                                installation_path: destination,
-                                bashrc_path: new Path(destination + `/OpenFOAM-v${version}/etc/bashrc`)
+                                installation_path: destination.toString(),
+                                bashrc_path: (new Path(destination + `/OpenFOAM-v${version}/etc/bashrc`)).toString()
                             });
                         }
                     }
