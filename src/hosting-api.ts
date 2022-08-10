@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /*
 This file is a part of of2plus vscode extension
 Author: Miasnenko Dmitry (clowzed.work@gmail.com)
@@ -12,12 +13,12 @@ Look for hosting api in https://github.com/clowzed/ofprebuilds-hosting
 */
 
 import * as dns from 'dns';
-import fetch from 'node-fetch';
+const fetch = require('sync-fetch');
 import * as http from 'http';
 import * as fs from 'fs';
 import * as targz from 'targz';
 import Path from 'pathlib-js';
-import { extension_folder, popup_manager, config_manager, channels_manger, information, error } from './misc';
+import { extension_folder, config_manager, channels_manger, information, error } from './misc';
 
 
 export class OFPrebuildsHostingApi {
@@ -35,34 +36,30 @@ export class OFPrebuildsHostingApi {
         return result;
     }
 
-    async fetchjson(url: string) {
-        return await fetch(url).then((res: { json: () => any; }) => res.json());
+    fetchjson(url: string) {
+        let result = fetch(url).json();
+        return result;
     }
 
-    async versions() {
+    versions() {
         let final_url = this.url + '/versions';
-        return await this.fetchjson(final_url);
+        let versions = this.fetchjson(final_url);
+        return versions["versions"];
     }
 
-    async platforms() {
+    platforms() {
         let final_url = this.url + '/platforms';
-        return await this.fetchjson(final_url);
+        return this.fetchjson(final_url)["platforms"];
     }
 
-    async versions_for(platform: string) {
+    versions_for(platform: string) {
         let final_url = this.url + `/versions_for?platform=${platform}`;
-        return await this.fetchjson(final_url);
+        return this.fetchjson(final_url)["versions"];
     }
 
-    async platforms_for(version: string) {
+    platforms_for(version: string) {
         let final_url = this.url + `/platforms_for?version=${version}`;
-        return await this.fetchjson(final_url);
-    }
-
-    async exists(version: string, platform: string) {
-        let final_url = this.url + `/exists?version=${version}&platform=${platform}`;
-        let answer = await this.fetchjson(final_url);
-        return answer['exists'] === 'true';
+        return this.fetchjson(final_url)["platforms"];
     }
 
     async download_and_install(version: string, platform: string, identifier: string) {
@@ -72,10 +69,9 @@ export class OFPrebuildsHostingApi {
         channels_manger.cinformation('of2plus', "Checking internet connection and prebuild existance...");
 
         //? Check if we are connected and prebuild exists
-        if (this.check_connection() && await this.exists(version, platform))
-        {
+        if (this.check_connection()) {
 
-            let final_url = this.url + `/download?version=${version}&platform=${platform}&invitation=${identifier}`
+            let final_url = this.url + `/download?version=${version}&platform=${platform}&invitation=${identifier}`;
 
             channels_manger.cinformation('of2plus', "Asking server...");
 
@@ -89,7 +85,7 @@ export class OFPrebuildsHostingApi {
 
                     let destination = ofprebuild_archive.withSuffix("");
 
-                    channels_manger.cinformation('of2plus', `Destination: ${destination.toString()}`)
+                    channels_manger.cinformation('of2plus', `Destination: ${destination.toString()}`);
 
                     const file = fs.createWriteStream(ofprebuild_archive.toString());
 
@@ -108,7 +104,7 @@ export class OFPrebuildsHostingApi {
                             (err) => {
                                 if (err) {
                                     error_ooccured = true;
-                                    error(`Error occured while decompressing: ${err.toString()}`)
+                                    error(`Error occured while decompressing: ${err.toString()}`);
                                 }
                                 else {
                                     information("Archive was sucessfully decompressed!");

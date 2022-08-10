@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /*
 This file is a part of of2plus vscode extension
 Author: Miasnenko Dmitry (clowzed.work@gmail.com)
@@ -13,7 +14,6 @@ For now it keeps installed openfoam builds and their paths
 
 import * as fs from 'fs';
 import Path from 'pathlib-js';
-import { config_filepath } from '../misc';
 
 
 export type Build = {
@@ -70,7 +70,7 @@ export class ConfigurationManager {
     //* This function returns a string array
     //* of installed platforms
     platforms() {
-        return this.builds().map((build) => build.platform)
+        return this.builds().map((build) => build.platform);
     }
 
     //* This function checks if build with
@@ -85,12 +85,7 @@ export class ConfigurationManager {
     //! If the build does not exist
     //! function returns 'undefined'
     get(version: string, platform: string) {
-        if (!this.installed(version, platform)) {
-            return undefined;
-        }
-        else {
-            return this.builds().filter((build) => build.version === version && build.platform === platform)[0];
-        }
+        return this.builds().filter((build) => build.version === version && build.platform === platform)[0];
     }
 
     //* This fucntion adds build to current 
@@ -110,12 +105,12 @@ export class ConfigurationManager {
 
     set_version(version: string) {
         this.config.choosed_version = version;
-        this.save()
+        this.save();
     }
 
     set_platform(platform: string) {
         this.config.choosed_platform = platform;
-        this.save()
+        this.save();
     }
 
     current_build() {

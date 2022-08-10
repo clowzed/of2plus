@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import * as sudo from 'sudo-prompt';
 import * as misc from './misc';
 import { OFPrebuildsHostingApi } from './hosting-api';
 
@@ -30,7 +30,7 @@ function of2plus_choosed_build_button(context: vscode.ExtensionContext) {
 
 async function of2plus_foldergen() {
 
-	misc.information("Gemerating standart folder structure and activating intellisense...");
+	misc.information("Generating standart folder structure and activating intellisense...");
 
 	let workspace = misc.workspace();
 
@@ -44,6 +44,8 @@ async function of2plus_foldergen() {
 		"applications/utilities",
 		"doc/Doxygen",
 		"Make",
+		"constant",
+		"system",
 		".vscode"];
 
 	let required_files = ["Make/files",
@@ -72,7 +74,7 @@ async function of2plus_foldergen() {
 
 	misc.information("Folders and files for standart folder structure was sucesfully generated!");
 
-	await vscode.commands.executeCommand('of2plus.intellisense')
+	of2plus_activate_intellisense();
 }
 
 
@@ -144,7 +146,7 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
 	misc.information("Enter server domain from which to download");
 
-	let url = await misc.popup_manager.ask("https://...", "Enter server domain", "") || "http://egorych.aero:16143";
+	let url = await misc.popup_manager.ask("https://...", "Enter server domain or press enter for default server", "") || "http://egorych.aero:16143";
 
 	let api = new OFPrebuildsHostingApi(url, identifier);
 
@@ -159,8 +161,8 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 	else {
 		misc.channels_manger.cinformation("of2plus", "Asking server for versions...");
 
-		let versions = await api.versions();
-		console.log(versions);
+		let versions = api.versions();
+
 
 		misc.channels_manger.cinformation("of2plus", `Versions amount: ${versions.length}`);
 
@@ -202,15 +204,12 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
 		if (misc.config_manager.installed(version, platform)) {
 			misc.warning(`OpenFoam build version ${version}: platform : ${platform} is already downloaded!`);
-		}
-
-		if (!api.exists(version, platform)) {
-			misc.error("Server responded that there was no such build. It must be a bug. Contact with admin.");
 			return;
 		}
 
 		if (await api.download_and_install(version, platform, identifier)) {
-			misc.error("Error occured while downloading prebuild. Check output for more information!");
+			misc.error("Error occured while downloading and installing Openfoam build!");
+			return;
 		}
 	}
 };
@@ -230,18 +229,21 @@ export async function activate(context: vscode.ExtensionContext) {
 			misc.error("You have not choosed openfoam build yet! Run 'of2plus: Choose build'");
 			return;
 		}
-
+		/*
 		misc.channels_manger.cinformation('of2plus', "Rewriting global bashrc...");
 
 		fs.writeFileSync(misc.global_bashrc.toString(), ". " + build.bashrc_path);
+		*/
 
 		misc.channels_manger.cinformation('of2plus', "Building...");
-		await misc.execute(`wmake ${misc.workspace()}`);
+
+		let command = `env LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64 bash -c '. ${build.bashrc_path} && wmake ${misc.workspace()}'`;
+		await misc.execute(command);
 	});
 
 
 	let choose_build = vscode.commands.registerCommand('of2plus.choose_build', async () => {
-		let builds = misc.config_manager.builds()
+		let builds = misc.config_manager.builds();
 
 		if (builds.length === 0) {
 			misc.error("No installed build were found! Run 'of2plus: Download OpenFoam'");
@@ -250,16 +252,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		let builds_strings = builds.map((build) => `Version: ${build.version} Platform: ${build.platform}`);
 
- 
+
 		// @ts-ignore Thinks that builds_strings has less than 1 element
 		let choosed_build = await misc.popup_manager.quickpick(builds_strings, "Choose openfoam build") || "";
 
 		misc.channels_manger.cinformation("of2plus", `User choosed: ${choosed_build}`);
 
-		if (choosed_build === "")
-		{
+		if (choosed_build === "") {
 			misc.error("Please select your build!");
-			return; 
+			return;
 		}
 
 		let build = builds[builds_strings.indexOf(choosed_build)];
@@ -268,32 +269,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		misc.config_manager.set_platform(build.platform);
 
 		misc.information("New build was saved!");
-		
+
+		choosed_build_button.text = `Version: ${build.version} Platform: ${build.platform}`;
+
 	});
-
-
-	//? On startup we check if our bashrc 
-	//? is already in /etc/bashrc
-	//? If not we create out own bashrc in 
-	//? extension folder
-	//? Before build we place activation of
-	//? bashrc we need inside this file
-	//! requires sudo access
-
-	let bashrc_data = fs.readFileSync('/etc/bash.bashrc');
-
-
-	//? Check if we've already modified /etc/bashrc
-	if (!("export LD_LIBRARY_PATH" in bashrc_data)) {
-		let command = ". " + misc.global_bashrc.toString() + '\nexport LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64"\n >> /etc/bashrc';
-
-		sudo.exec(command, { name: "of2plus update bashrc" }, (err) => {
-			if (err) {
-				misc.error(`Error occured while modifying bashrc! Reason : ${err.message}`);
-			}
-		});
-
-	}
 
 	let foldergen = vscode.commands.registerCommand("of2plus.genfolders", of2plus_foldergen);
 	let download_prebuilds = vscode.commands.registerCommand("of2plus.downloadOF", of2plus_download_prebuilds);

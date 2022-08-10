@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /*
 This file is a part of of2plus vscode extension
 Author: Miasnenko Dmitry (clowzed.work@gmail.com)
