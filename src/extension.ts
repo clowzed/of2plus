@@ -229,11 +229,6 @@ export async function activate(context: vscode.ExtensionContext) {
 			misc.error("You have not choosed openfoam build yet! Run 'of2plus: Choose build'");
 			return;
 		}
-		/*
-		misc.channels_manger.cinformation('of2plus', "Rewriting global bashrc...");
-
-		fs.writeFileSync(misc.global_bashrc.toString(), ". " + build.bashrc_path);
-		*/
 
 		misc.channels_manger.cinformation('of2plus', "Building...");
 
