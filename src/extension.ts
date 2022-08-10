@@ -1,27 +1,12 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import * as fs from 'fs';
-import * as helps from "./helpers";
-import * as http from 'http';
 import * as path from 'path';
-import * as targz from 'targz';
 import * as vscode from 'vscode';
-import { Manager } from './confman';
-import Path from 'pathlib-js';
-import * as sudo from 'sudo-prompt';
+import * as misc from './misc';
+import { OFPrebuildsHostingApi } from './hosting-api';
 
 
-let extensionFolder = new Path(helps.homeDirectory() + "/of2plus-important");
-
-if (!extensionFolder.existsSync()) {
-	extensionFolder.makeDirSync();
-}
-
-let configuration = new Path(extensionFolder.toString()  + "/installed.json");
-
-let configManager = new Manager(configuration);
-
-
-function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext) 
-{
+function of2plus_buildbutton(context: vscode.ExtensionContext) {
 	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 
 	baritem.command = "of2plus.build";
@@ -32,22 +17,24 @@ function of2PlusInitializeBuildBarButton(context: vscode.ExtensionContext)
 }
 
 
-function of2PlusInitializeASourceBarButton(context: vscode.ExtensionContext) {
+function of2plus_choosed_build_button(context: vscode.ExtensionContext) {
 	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 
-	baritem.command = "of2plus.loadbashrc";
-	baritem.text = "Activate environment";
+	baritem.text = `Version: ${misc.config_manager.choosed_version()} Platform: ${misc.config_manager.choosed_platform()}`;
 
 	baritem.show();
 	context.subscriptions.push(baritem);
 	return baritem;
 }
 
-function of2PlusGenerateStandartFoldersAndFiles() {
 
-	let rootFolder = helps.workspaceFolder();
+async function of2plus_foldergen() {
 
-	let foldersNames = ["applications", "bin",
+	misc.information("Generating standart folder structure and activating intellisense...");
+
+	let workspace = misc.workspace();
+
+	let required_folders = ["applications", "bin",
 		"doc", "etc",
 		"lib", "src",
 		"tutorials",
@@ -57,44 +44,45 @@ function of2PlusGenerateStandartFoldersAndFiles() {
 		"applications/utilities",
 		"doc/Doxygen",
 		"Make",
+		"constant",
+		"system",
 		".vscode"];
 
-	let fileNames = ["Make/files",
+	let required_files = ["Make/files",
 		"Make/options",
 		".vscode/bashrc",
 		".vscode/settings.json"];
 
-
-	foldersNames.forEach(folderName => {
-		let fullFolderPath = path.join(rootFolder, folderName);
-
-		if (!fs.existsSync(fullFolderPath)) { vscode.workspace.fs.createDirectory(vscode.Uri.file(fullFolderPath)); }
+	required_folders.forEach(name => {
+		let folder_path = path.join(workspace, name);
+		if (!fs.existsSync(folder_path)) { vscode.workspace.fs.createDirectory(vscode.Uri.file(folder_path)); }
 
 	});
 
-	const workspaceEdit = new vscode.WorkspaceEdit();
 
-	fileNames.forEach(fileName => {
-		let fullFilePath = path.join(rootFolder, fileName);
+	//? This section generates files
+	const edit = new vscode.WorkspaceEdit();
 
-		if (!fs.existsSync(fullFilePath)) {
-			workspaceEdit.createFile(vscode.Uri.file(fullFilePath));
-			vscode.workspace.applyEdit(workspaceEdit);
+	required_files.forEach(name => {
+		let file_path = path.join(workspace, name);
 
+		if (!fs.existsSync(file_path)) {
+			edit.createFile(vscode.Uri.file(file_path));
+			vscode.workspace.applyEdit(edit);
 		}
 	});
 
-	vscode.commands.executeCommand("of2plus.activateIntellisense");
+	misc.information("Folders and files for standart folder structure was sucesfully generated!");
+
+	of2plus_activate_intellisense();
 }
 
 
+async function of2plus_activate_intellisense() {
 
+	misc.information("Activating intellisense...");
 
-//* Status: Finished
-//! You must have C/C++ Extension!
-async function intellisenseActivation() {
-
-	let settings_json = helps.workspaceFolder() + "/.vscode/settings.json";
+	let settings_json = misc.workspace() + "/.vscode/settings.json";
 
 	if (fs.existsSync(settings_json)) {
 		try {
@@ -114,14 +102,11 @@ async function intellisenseActivation() {
 
 	}
 	else {
-		helps.error("For activation run of2plus: Generate standart folder structure");
+		misc.error("settings.json file was not found! Run 'of2plus: Generate standart folder structure.'");
 		return;
 	}
 
-
-
-
-	let settingsPath = helps.workspaceFolder() + "/.vscode/c_cpp_properties.json";
+	let settings = misc.workspace() + "/.vscode/c_cpp_properties.json";
 
 
 	vscode.commands.executeCommand('C_Cpp.ResetDatabase').then(() => {
@@ -129,7 +114,7 @@ async function intellisenseActivation() {
 			vscode.commands.executeCommand('workbench.action.closeActiveEditor').then(() => {
 
 
-				let config = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || {};
+				let config = JSON.parse(fs.readFileSync(settings, 'utf8')) || {};
 
 				config['configurations'][0]['includePath'].push("~/of2plus-important/**");
 				config['configurations'][0]['includePath'].push("/usr/include/**");
@@ -138,7 +123,7 @@ async function intellisenseActivation() {
 					config['configurations'][0]['compilerPath'] = '/usr/local/bin/g++';
 				}
 
-				fs.writeFileSync(settingsPath, JSON.stringify(config));
+				fs.writeFileSync(settings, JSON.stringify(config));
 			});
 
 
@@ -148,175 +133,153 @@ async function intellisenseActivation() {
 			vscode.commands.executeCommand('workbench.action.closeActiveEditor');
 		});
 
+	misc.information("Intellisense was succesfully activated!");
 }
 
 
+async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
+	// TODO Add checking server protocol
 
-//* Status: Finised
-//? Added check for same prebuild download
-async function of2plusDownloadPrebuilds(context: vscode.ExtensionContext) {
+	misc.information("Enter valid identifier for downloading.");
+	let identifier = await misc.popup_manager.ask("123-456-789", "Enter your identifier", "") || "";
 
-	if (!helps.isConnectedToInternet()) {
-		helps.error("You are not connected to the internet! It is impossible to download prebuilds!");
+	misc.information("Enter server domain from which to download");
+
+	let url = await misc.popup_manager.ask("https://...", "Enter server domain or press enter for default server", "") || "http://egorych.aero:16143";
+
+	let api = new OFPrebuildsHostingApi(url, identifier);
+
+	if (identifier === "") {
+		misc.error("We can not download OpenFoam prebuilds without valid due to download protection! Contact with hosting admin to recieve valid identifier");
 		return;
 	}
-
-	//? Get available versions and platforms for
-
-	let versions = await helps.json_from('http://127.0.0.1:5002/versions');
-	versions = versions['versions'];
-
-
-	if (versions?.length === 0) {
-		helps.error("No versions available! ");
+	else if (url === "") {
+		misc.error("We can not download OpenFoam prebuilds without knowing from where to download.");
 		return;
 	}
+	else {
+		misc.channels_manger.cinformation("of2plus", "Asking server for versions...");
 
-	let version = await helps.quickpick(versions, "Choose version of OpenFOAM") || "";
+		let versions = api.versions();
 
 
+		misc.channels_manger.cinformation("of2plus", `Versions amount: ${versions.length}`);
 
-	let platforms = await helps.json_from(`http://127.0.0.1:5002/platforms_for?version=${version}`);
-	platforms = platforms['platforms'];
+		if (versions?.length === 0) {
+			misc.error("There are no available versions on hosting. Contact with administartor!");
+			return;
+		}
 
-	if (platforms.length === 0) {
-		helps.error("No platforms were found for this version!");
-		return;
+		misc.channels_manger.cinformation("of2plus", `Asking for version...`);
+
+		let version = await misc.popup_manager.quickpick(versions, "Choose version of OpenFOAM") || "";
+
+		misc.channels_manger.cinformation("of2plus", `User choosed: ${version}`);
+
+		if (!versions.includes(version)) {
+			misc.error("We cannot download build without knowing OpenFoam version you need!");
+			return;
+		}
+
+		misc.channels_manger.cinformation("of2plus", "Asking server for platforms...");
+
+		let platforms = await api.platforms_for(version);
+
+		if (platforms?.length === 0) {
+			misc.error(`There are no available platforms for version: ${version} on hosting. Contact with administartor!`);
+			return;
+		}
+
+		misc.channels_manger.cinformation("of2plus", `Asking for platform...`);
+
+		let platform = await misc.popup_manager.quickpick(platforms, "Choose platform") || "";
+
+		misc.channels_manger.cinformation("of2plus", `User choosed: ${platform}`);
+
+		if (!platforms.includes(platform)) {
+			misc.error("We cannot download build without knowing build platform you need!");
+			return;
+		}
+
+		if (misc.config_manager.installed(version, platform)) {
+			misc.warning(`OpenFoam build version ${version}: platform : ${platform} is already downloaded!`);
+			return;
+		}
+
+		if (await api.download_and_install(version, platform, identifier)) {
+			misc.error("Error occured while downloading and installing Openfoam build!");
+			return;
+		}
 	}
-
-	let platform = await helps.quickpick(platforms, "Choose platform") || "";
-
-
-
-
-	let compressedPrebuildsFile = new Path(extensionFolder + `/${version}____${platform}.tar.gz`);
-	let destination = compressedPrebuildsFile.withSuffix("");
-
-
-	if (configManager.isInstalled(version, platform)) {
-		helps.info("You have already downloaded this prebuild!");
-		return;
-	}
-
-
-	if (!helps.prebuildExists(`http://127.0.0.1:5002/exists?version=${version}&platform=${platform}`)) {
-		helps.error("Prebuild for such version and platform does not exists!");
-		return;
-	}
-
-	helps.info("Prebuilds downloading was started...");
-
-	let anyError = false;
-
-
-
-	//? Downloading 
-	http.get(`http://127.0.0.1:5002/download?version=${version}&platform=${platform}`,
-		(res) => {
-			const file = fs.createWriteStream(compressedPrebuildsFile.toString());
-
-			res.pipe(file);
-
-			file.on('finish', () => {
-				file.close();
-				helps.info(`Prebuilds were succesfully downloaded!`);
-				targz.decompress({
-					src: compressedPrebuildsFile.toString(),
-					dest: destination.toString(),
-				},
-					(err) => {
-						if (err) {
-							helps.error(err?.toString() || "");
-							anyError = true;
-						}
-						else {
-							helps.info("Archive was sucessfully untared!");
-						}
-					});
-
-				if (!anyError) {
-					configManager.install(version, platform, destination, new Path(destination + `/OpenFOAM-v${version}/etc/bashrc`));
-				}
-
-			}
-			);
-		})
-		.on("error", (err) => {
-			helps.error("Error occured while downloading prebuilds! Check output for more information");
-			helps.outputChannel("of2plus stderr").append(err.message);
-			anyError = true;
-		});
-
 };
 
 
-export function activate(context: vscode.ExtensionContext) 
-{
-	let version_choosed = of2PlusInitializeASourceBarButton(context);
+export async function activate(context: vscode.ExtensionContext) {
 
-	of2PlusInitializeBuildBarButton(context);
+	of2plus_buildbutton(context);
 
+	let choosed_build_button = of2plus_choosed_build_button(context);
 
-	//? This builds with wmake
-	let disposable = vscode.commands.registerCommand('of2plus.build', async () => {
-		helps.info("Build was started!");
-		await helps.spawnRedirected(`wmake ${helps.workspaceFolder()}`, helps.outputChannel("wmake build"), helps.outputChannel("wmake build"));
-		helps.info("Build finished");
+	let build = vscode.commands.registerCommand('of2plus.build', async () => {
+
+		let build = misc.config_manager.current_build();
+
+		if (build === undefined) {
+			misc.error("You have not choosed openfoam build yet! Run 'of2plus: Choose build'");
+			return;
+		}
+		/*
+		misc.channels_manger.cinformation('of2plus', "Rewriting global bashrc...");
+
+		fs.writeFileSync(misc.global_bashrc.toString(), ". " + build.bashrc_path);
+		*/
+
+		misc.channels_manger.cinformation('of2plus', "Building...");
+
+		let command = `env LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64 bash -c '. ${build.bashrc_path} && wmake ${misc.workspace()}'`;
+		await misc.execute(command);
 	});
 
 
-	//? Loads environment
-	let loadBashrc = vscode.commands.registerCommand("of2plus.loadbashrc", async () => {
-		if (!fs.existsSync(helps.workspaceFolder() + "/.vscode/bashrc")) {
-			helps.error("Run of2plus: Generate standart folder structure!");
+	let choose_build = vscode.commands.registerCommand('of2plus.choose_build', async () => {
+		let builds = misc.config_manager.builds();
+
+		if (builds.length === 0) {
+			misc.error("No installed build were found! Run 'of2plus: Download OpenFoam'");
 			return;
 		}
 
-		let builds = configManager.builds();
+		let builds_strings = builds.map((build) => `Version: ${build.version} Platform: ${build.platform}`);
 
-		if (builds === undefined) {
-			helps.info("No builds were found");
+
+		// @ts-ignore Thinks that builds_strings has less than 1 element
+		let choosed_build = await misc.popup_manager.quickpick(builds_strings, "Choose openfoam build") || "";
+
+		misc.channels_manger.cinformation("of2plus", `User choosed: ${choosed_build}`);
+
+		if (choosed_build === "") {
+			misc.error("Please select your build!");
 			return;
 		}
 
-		let versions = builds.map((build: { version: string }) => build['version']);
-		let platforms = builds.map((build: { platform: string }) => build['platform']);
+		let build = builds[builds_strings.indexOf(choosed_build)];
 
-		let version = await helps.quickpick(versions, "Choose version of OpenFOAM") || "";
-		let platform = await helps.quickpick(platforms, "Choose platform of OpenFOAM") || "";
+		misc.config_manager.set_version(build.version);
+		misc.config_manager.set_platform(build.platform);
 
+		misc.information("New build was saved!");
 
-		let build = configManager.find(version, platform);
-
-		fs.writeFileSync(helps.workspaceFolder() + "/.vscode/bashrc", ". " + configManager.find(version, platform)[0]["bashrc"] + '\nexport LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64"\n');
-		version_choosed.text = `OpenFOAM: version: ${version} platform: ${platform}`;
+		choosed_build_button.text = `Version: ${build.version} Platform: ${build.platform}`;
 
 	});
 
-	sudo.exec(`echo ". ${helps.workspaceFolder() + "/.vscode/bashrc"}" >> /etc/bashrc`, { name: "Of2plus update bashrc" }, (err) => {
-		if (err) {
-			helps.error(err.message);
-			helps.error("Error occured while activating bashrc!");
-		}
-	});
+	let foldergen = vscode.commands.registerCommand("of2plus.genfolders", of2plus_foldergen);
+	let download_prebuilds = vscode.commands.registerCommand("of2plus.downloadOF", of2plus_download_prebuilds);
 
-
-	let foldersInit = vscode.commands.registerCommand("of2plus.genfolders", of2PlusGenerateStandartFoldersAndFiles);
-	let foamLoad = vscode.commands.registerCommand("of2plus.downloadOF", of2plusDownloadPrebuilds);
-	let intellisense = vscode.commands.registerCommand("of2plus.activateIntellisense", intellisenseActivation);
-
-
-	context.subscriptions.push(disposable);
-	context.subscriptions.push(foldersInit);
-	context.subscriptions.push(activation);
-	context.subscriptions.push(foamLoad);
-	context.subscriptions.push(loadBashrc);
-	context.subscriptions.push(intellisense);
+	context.subscriptions.push(build);
+	context.subscriptions.push(foldergen);
+	context.subscriptions.push(download_prebuilds);
 }
 
-
-
-export function deactivate() {
-	helps.info("of2plus extension is deactivated!");
-}
+export function deactivate() { }
