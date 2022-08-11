@@ -43,7 +43,6 @@ export let workspace = () => {
 
 export let execute = (cmd: string) =>
     new Promise<string>((resolve, reject) => {
-        console.log("Executing" + cmd);
         cp.exec(cmd, (err, out) => {
             if (err) {
                 return reject(err);
@@ -51,6 +50,8 @@ export let execute = (cmd: string) =>
             return resolve(out);
         });
     });
+
+
 
 export let information = (text: string) => {
     popup_manager.information(text);

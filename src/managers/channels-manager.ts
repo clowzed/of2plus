@@ -36,21 +36,21 @@ export class ChannelsManager {
     //* info prestring into channel
     cinformation(channel_name: string, text: string) {
         let channel = this.get_channel(channel_name);
-        channel.append(`of2plus info  : ${text}`);
+        channel.append(`of2plus info  : ${text}\n`);
     }
 
     //* Sends text message with 
     //* error prestring into channel
     cerror(channel_name: string, text: string) {
         let channel = this.get_channel(channel_name);
-        channel.append(`of2plus error : ${text}`);
+        channel.append(`of2plus error : ${text}\n`);
     }
 
     //* Sends text message with 
     //* warning prestring into channel
     cwarning(channel_name: string, text: string) {
         let channel = this.get_channel(channel_name);
-        channel.append(`of2plus warn  : ${text}`);
+        channel.append(`of2plus warn  : ${text}\n`);
     }
 }
 

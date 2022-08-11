@@ -17,7 +17,9 @@
         "commands": [
             {
                 "command": "of2plus.build",
-                "title": "of2plus: Build with wmake"
+                "title": "Build with wmake",
+                "category": "of2plus: ",
+                "icon": "$(symbol-property)"
             },
             {
                 "command": "of2plus.genfolders",
@@ -30,8 +32,26 @@
             {
                 "command": "of2plus.choose_build",
                 "title": "of2plus: Choose openfoam build."
+            },
+            {
+                "command": "of2plus.run",
+                "title": "Run from build folder",
+                "category": "of2plus: ",
+                "icon": "$(play)"
             }
-        ]
+        ],
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "of2plus.build",
+                    "group": "navigation"
+                },
+                {
+                    "command": "of2plus.run",
+                    "group": "navigation"
+                }
+            ]
+        }
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",

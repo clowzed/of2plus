@@ -4,17 +4,9 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import * as misc from './misc';
 import { OFPrebuildsHostingApi } from './hosting-api';
+import Path from 'pathlib-js';
 
 
-function of2plus_buildbutton(context: vscode.ExtensionContext) {
-	let baritem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-
-	baritem.command = "of2plus.build";
-	baritem.text = "Build with wmake";
-
-	baritem.show();
-	context.subscriptions.push(baritem);
-}
 
 
 function of2plus_choosed_build_button(context: vscode.ExtensionContext) {
@@ -50,8 +42,8 @@ async function of2plus_foldergen() {
 
 	let required_files = ["Make/files",
 		"Make/options",
-		".vscode/bashrc",
-		".vscode/settings.json"];
+		".vscode/settings.json",
+		".vscode/of2plus.json"];
 
 	required_folders.forEach(name => {
 		let folder_path = path.join(workspace, name);
@@ -139,8 +131,6 @@ async function of2plus_activate_intellisense() {
 
 async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
-	// TODO Add checking server protocol
-
 	misc.information("Enter valid identifier for downloading.");
 	let identifier = await misc.popup_manager.ask("123-456-789", "Enter your identifier", "") || "";
 
@@ -217,11 +207,9 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
 export async function activate(context: vscode.ExtensionContext) {
 
-	of2plus_buildbutton(context);
-
 	let choosed_build_button = of2plus_choosed_build_button(context);
 
-	let build = vscode.commands.registerCommand('of2plus.build', async () => {
+	let build = vscode.commands.registerCommand('of2plus.build', () => {
 
 		let build = misc.config_manager.current_build();
 
@@ -232,8 +220,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		misc.channels_manger.cinformation('of2plus', "Building...");
 
-		let command = `env LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64 bash -c '. ${build.bashrc_path} && wmake ${misc.workspace()}'`;
-		await misc.execute(command);
+		let command = `LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${build.installation_path}/other:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64 bash -c '. ${build.bashrc_path} && wmake ${misc.workspace()}'`;
+		misc.execute(command);
 	});
 
 
@@ -269,12 +257,53 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	});
 
+	let run_from_folder = vscode.commands.registerCommand('of2plus.run', async () => {
+		let build = misc.config_manager.current_build();
+
+		if (build === undefined) {
+			misc.error("You have not choosed openfoam build yet! Run 'of2plus: Choose build'");
+			return;
+		}
+
+		let command = `bash -c '. ${build.bashrc_path} && echo $FOAM_USER_APPBIN'`;
+		let folder = new Path((await misc.execute(command)).trim());
+
+
+		if (!folder.existsSync()) {
+			misc.error("FOAM_USER_APPBIN is empty! Some error occured!");
+			return;
+		}
+		else {
+			let executables = folder.readDirSync();
+			if (executables.length === 0) {
+				misc.error("No executables were found in FOAM_USER_APPBIN");
+				return;
+			}
+			let executables_for_choosing = executables.map((path) => path.stem);
+			// @ts-ignore Thinks that [] has less than 1 element
+			let choosed_executable = await misc.popup_manager.quickpick(executables_for_choosing, "Choose executable to run:");
+
+			// escape check
+			if (choosed_executable === undefined) { return; };
+
+			let exepath = executables[executables_for_choosing.indexOf(choosed_executable)];
+
+			let command = `LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${build.installation_path}/other:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64 bash -c '. ${build.bashrc_path} && ${exepath}'`;
+
+			misc.channels_manger.cinformation('of2plus', await misc.execute(command));
+
+		}
+
+	});
+
 	let foldergen = vscode.commands.registerCommand("of2plus.genfolders", of2plus_foldergen);
 	let download_prebuilds = vscode.commands.registerCommand("of2plus.downloadOF", of2plus_download_prebuilds);
 
 	context.subscriptions.push(build);
 	context.subscriptions.push(foldergen);
 	context.subscriptions.push(download_prebuilds);
+	context.subscriptions.push(choose_build);
+	context.subscriptions.push(run_from_folder);
 }
 
 export function deactivate() { }
