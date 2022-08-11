@@ -1,7 +1,8 @@
 {
     "name": "of2plus",
     "displayName": "of2plus-devkit",
-    "description": "",
+    "description": "Extension for working with OpenFoam",
+    "repository" : "https://github.com/clowzed/of2plus",
     "version": "0.0.1",
     "engines": {
         "vscode": "^1.65.0"
