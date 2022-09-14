@@ -13,12 +13,12 @@ Look for hosting api in https://github.com/clowzed/ofprebuilds-hosting
 */
 
 import * as dns from 'dns';
-const fetch = require('sync-fetch');
 import * as http from 'http';
 import * as fs from 'fs';
 import * as targz from 'targz';
 import Path from 'pathlib-js';
 import { extension_folder, config_manager, channels_manger, information, error } from './misc';
+import fetch from 'node-fetch';
 
 
 export class OFPrebuildsHostingApi {
@@ -37,29 +37,31 @@ export class OFPrebuildsHostingApi {
     }
 
     fetchjson(url: string) {
-        let result = fetch(url).json();
+        let result = fetch(url).then(response => response.json()).then((data) => data);
         return result;
     }
 
     versions() {
         let final_url = this.url + '/versions';
-        let versions = this.fetchjson(final_url);
-        return versions["versions"];
+        let versions = this.fetchjson(final_url).then(resp => resp["versions"]);
+        return versions;
     }
 
     platforms() {
         let final_url = this.url + '/platforms';
-        return this.fetchjson(final_url)["platforms"];
+        let platforms = this.fetchjson(final_url).then(resp => resp["platforms"]);
+        return platforms;
     }
 
     versions_for(platform: string) {
         let final_url = this.url + `/versions_for?platform=${platform}`;
-        return this.fetchjson(final_url)["versions"];
-    }
+        let versions = this.fetchjson(final_url).then(resp => resp["versions"]);
+        return versions;    }
 
     platforms_for(version: string) {
         let final_url = this.url + `/platforms_for?version=${version}`;
-        return this.fetchjson(final_url)["platforms"];
+        let platforms = this.fetchjson(final_url).then(resp => resp["platforms"]);
+        return platforms;
     }
 
     async download_and_install(version: string, platform: string, identifier: string) {

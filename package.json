@@ -4,7 +4,7 @@
     "description": "Extension for working with OpenFoam",
     "repository": "https://github.com/clowzed/of2plus",
     "publisher": "clowzed",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "engines": {
         "vscode": "^1.65.0"
     },

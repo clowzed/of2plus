@@ -134,7 +134,7 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
 	misc.information("Enter valid identifier for downloading.");
 
-	misc.popup_manager.ask("123-456-789", "Enter your identifier", "").then((value) => {
+	misc.popup_manager.ask("123-456-789", "Enter your identifier", "").then(async (value) => {
 
 		let identifier = value || "";
 		misc.information(`Identifier: ${identifier}`);
@@ -144,19 +144,19 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 		}
 		else {
 			misc.popup_manager.ask("https://...", "Enter server domain or press enter for default server", "").then(
-				(value) => {
+				async (value) => {
 					let server = value || "http:/egorych.aero:16143";
 
 					let api = new OFPrebuildsHostingApi(server, identifier);
 
-					let versions = api.versions();
+					let versions = await api.versions();
 
 					if (versions.length === 0) {
 						misc.error("No available version were found on the server!");
 					}
 					else {
 						// @ts-ignore
-						misc.popup_manager.quickpick(versions, "Choose version of OpenFOAM").then((version) => {
+						misc.popup_manager.quickpick(versions, "Choose version of OpenFOAM").then(async (version) => {
 							if (version === "" || version === undefined) {
 								misc.error("Version was not choosed!");
 							}
@@ -165,7 +165,7 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 									misc.error("We cannot download build without knowing OpenFoam version you need!");
 								}
 								else {
-									let platforms = api.platforms_for(version);
+									let platforms = await api.platforms_for(version);
 
 									if (platforms.length === 0) {
 										misc.error("No platforms were found for this version!");
