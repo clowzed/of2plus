@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import * as misc from './misc';
 import { OFPrebuildsHostingApi } from './hosting-api';
 import Path from 'pathlib-js';
+import { version } from 'os';
 
 
 
@@ -132,76 +133,85 @@ async function of2plus_activate_intellisense() {
 async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 
 	misc.information("Enter valid identifier for downloading.");
-	let identifier = await misc.popup_manager.ask("123-456-789", "Enter your identifier", "") || "";
 
-	misc.information("Enter server domain from which to download");
+	misc.popup_manager.ask("123-456-789", "Enter your identifier", "").then((value) => {
 
-	let url = await misc.popup_manager.ask("https://...", "Enter server domain or press enter for default server", "") || "http://egorych.aero:16143";
+		let identifier = value || "";
+		misc.information(`Identifier: ${identifier}`);
 
-	let api = new OFPrebuildsHostingApi(url, identifier);
+		if (identifier === "") {
+			misc.error("We can not download OpenFoam prebuilds without valid identifier due to download protection! Contact with hosting admin to recieve valid identifier");
+		}
+		else {
+			misc.popup_manager.ask("https://...", "Enter server domain or press enter for default server", "").then(
+				(value) => {
+					let server = value || "http:/egorych.aero:16143";
 
-	if (identifier === "") {
-		misc.error("We can not download OpenFoam prebuilds without valid due to download protection! Contact with hosting admin to recieve valid identifier");
-		return;
+					let api = new OFPrebuildsHostingApi(server, identifier);
+
+					let versions = api.versions();
+
+					if (versions.length === 0) {
+						misc.error("No available version were found on the server!");
+					}
+					else {
+						// @ts-ignore
+						misc.popup_manager.quickpick(versions, "Choose version of OpenFOAM").then((version) => {
+							if (version === "" || version === undefined) {
+								misc.error("Version was not choosed!");
+							}
+							else {
+								if (!versions.includes(version)) {
+									misc.error("We cannot download build without knowing OpenFoam version you need!");
+								}
+								else {
+									let platforms = api.platforms_for(version);
+
+									if (platforms.length === 0) {
+										misc.error("No platforms were found for this version!");
+									}
+									else {
+										// @ts-ignore
+										misc.popup_manager.quickpick(platforms, "Choose platform").then(
+											(platform) => {
+												if (platform === "" || platform === undefined) {
+													misc.error("No platform was choosed");
+												}
+												else {
+													if (!platforms.includes(platform)) {
+														misc.error("We cannot download build without knowing platform!");
+													}
+													else {
+														if (misc.config_manager.installed(version, platform)) {
+															misc.warning(`OpenFoam build version ${version}: platform : ${platform} is already downloaded!`);
+														}
+														else {
+															api.download_and_install(version, platform, identifier).then((error_occured) => {
+																if (error_occured) {
+																	misc.error("Error occured while downloading and installing Openfoam build!");
+																}
+																else {
+																	misc.information("OpenFoam was succeasfully installed!");
+																}
+															}
+															);
+														}
+													}
+												}
+											}
+										);
+									}
+
+								}
+							}
+						});
+					}
+
+				}
+			);
+		}
 	}
-	else if (url === "") {
-		misc.error("We can not download OpenFoam prebuilds without knowing from where to download.");
-		return;
-	}
-	else {
-		misc.channels_manger.cinformation("of2plus", "Asking server for versions...");
-
-		let versions = api.versions();
-
-
-		misc.channels_manger.cinformation("of2plus", `Versions amount: ${versions.length}`);
-
-		if (versions?.length === 0) {
-			misc.error("There are no available versions on hosting. Contact with administartor!");
-			return;
-		}
-
-		misc.channels_manger.cinformation("of2plus", `Asking for version...`);
-
-		let version = await misc.popup_manager.quickpick(versions, "Choose version of OpenFOAM") || "";
-
-		misc.channels_manger.cinformation("of2plus", `User choosed: ${version}`);
-
-		if (!versions.includes(version)) {
-			misc.error("We cannot download build without knowing OpenFoam version you need!");
-			return;
-		}
-
-		misc.channels_manger.cinformation("of2plus", "Asking server for platforms...");
-
-		let platforms = await api.platforms_for(version);
-
-		if (platforms?.length === 0) {
-			misc.error(`There are no available platforms for version: ${version} on hosting. Contact with administartor!`);
-			return;
-		}
-
-		misc.channels_manger.cinformation("of2plus", `Asking for platform...`);
-
-		let platform = await misc.popup_manager.quickpick(platforms, "Choose platform") || "";
-
-		misc.channels_manger.cinformation("of2plus", `User choosed: ${platform}`);
-
-		if (!platforms.includes(platform)) {
-			misc.error("We cannot download build without knowing build platform you need!");
-			return;
-		}
-
-		if (misc.config_manager.installed(version, platform)) {
-			misc.warning(`OpenFoam build version ${version}: platform : ${platform} is already downloaded!`);
-			return;
-		}
-
-		if (await api.download_and_install(version, platform, identifier)) {
-			misc.error("Error occured while downloading and installing Openfoam build!");
-			return;
-		}
-	}
+	);
 };
 
 
