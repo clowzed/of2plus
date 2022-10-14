@@ -30,6 +30,7 @@ export class OFPrebuildsHostingApi {
         this.url = url;
     }
 
+
     check_connection() {
         let result = true;
         dns.resolve("ww.google.com", (err: any) => { result = false; });
@@ -64,6 +65,7 @@ export class OFPrebuildsHostingApi {
         return platforms;
     }
 
+    
     async download_and_install(version: string, platform: string, identifier: string) {
 
         let error_ooccured = false;

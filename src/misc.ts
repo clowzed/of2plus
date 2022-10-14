@@ -41,6 +41,7 @@ export let workspace = () => {
         || "./";
 };
 
+
 export let execute = (cmd: string) =>
     new Promise<string>((resolve, reject) => {
         cp.exec(cmd, (err, out) => {
@@ -58,11 +59,19 @@ export let information = (text: string) => {
     channels_manger.cinformation('of2plus', text);
 };
 
+/**
+ * It displays a warning message.
+ * @param {string} text - The text to display in the popup and in the console
+ */
 export let warning = (text: string) => {
     popup_manager.warning(text);
     channels_manger.cwarning('of2plus', text);
 };
 
+/**
+ * It displays an error message in the popup and in the console
+ * @param {string} text - The text to display in the popup.
+ */
 export let error = (text: string) => {
     popup_manager.error(text);
     channels_manger.cerror('of2plus', text);

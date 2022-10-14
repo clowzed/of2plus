@@ -5,8 +5,8 @@ import * as vscode from 'vscode';
 import * as misc from './misc';
 import { OFPrebuildsHostingApi } from './hosting-api';
 import Path from 'pathlib-js';
-import { version } from 'os';
-
+import * as readline from 'readline';
+import * as cp from "child_process";
 
 
 
@@ -118,8 +118,6 @@ async function of2plus_activate_intellisense() {
 
 				fs.writeFileSync(settings, JSON.stringify(config));
 			});
-
-
 		});
 	})
 		.then(() => {
@@ -201,12 +199,10 @@ async function of2plus_download_prebuilds(context: vscode.ExtensionContext) {
 											}
 										);
 									}
-
 								}
 							}
 						});
 					}
-
 				}
 			);
 		}
@@ -219,7 +215,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	let choosed_build_button = of2plus_choosed_build_button(context);
 
-	let build = vscode.commands.registerCommand('of2plus.build', () => {
+	let build = vscode.commands.registerCommand('of2plus.build', async () => {
 
 		let build = misc.config_manager.current_build();
 
@@ -228,10 +224,56 @@ export async function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		misc.channels_manger.cinformation('of2plus', "Building...");
+		misc.channels_manger.cinformation("of2plus", "Searching folder order for wmake");
 
-		let command = `LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${build.installation_path}/other:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64 bash -c '. ${build.bashrc_path} && wmake ${misc.workspace()}'`;
-		misc.execute(command);
+		let folders_order_build_file = path.join(misc.workspace(), "wmakeorder.txt");
+
+		if (fs.existsSync(folders_order_build_file)) {
+			misc.channels_manger.cinformation("of2plus", "File with folders order was found!");
+
+			let stream = fs.createReadStream(folders_order_build_file);
+
+			const file = readline.createInterface({
+				input: stream,
+				crlfDelay: Infinity
+			});
+
+
+			for await (const line of file) {
+
+				let folderpath = path.join(misc.workspace(), line.trim());
+
+				misc.channels_manger.cinformation('of2plus', `Got line: ${line.trim()}. Checking if ${folderpath} exists...`);
+
+				if (fs.existsSync(folderpath)) {
+					misc.channels_manger.cinformation('of2plus', `Running wmake in ${folderpath}`);
+
+					let command = `LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${build.installation_path}/other:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64 bash -c '. ${build.bashrc_path} && wmake ${folderpath}'`;
+
+					// Here we do no use async
+					// as we need to compile other folders
+					// before main folder
+					cp.exec(command, (err, stdout, stderr) => {
+						if (err) {
+							misc.warning(`Fialed wamke build for ${folderpath}. Stopping compilation...`);
+							misc.error(stderr);
+							return;
+						}
+						misc.information(stdout);
+						misc.information(`Build for ${folderpath} finished successfully!`);
+					});
+				}
+				else {
+					misc.channels_manger.cinformation('of2plus', "This folder does not exists! Skipping...");
+				}
+			}
+		}
+		else {
+			misc.channels_manger.cinformation('of2plus', "file with build order was not found. Running wmake in workspace...");
+			misc.channels_manger.cinformation('of2plus', "Building...");
+			let command = `LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${build.installation_path}/other:/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64 bash -c '. ${build.bashrc_path} && wmake ${misc.workspace()}'`;
+			misc.execute(command);
+		}
 	});
 
 
